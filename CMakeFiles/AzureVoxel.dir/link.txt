@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/AzureVoxel.dir/main.cpp.o CMakeFiles/AzureVoxel.dir/src/window.cpp.o CMakeFiles/AzureVoxel.dir/src/block.cpp.o CMakeFiles/AzureVoxel.dir/src/texture.cpp.o CMakeFiles/AzureVoxel.dir/src/camera.cpp.o -o AzureVoxel  /usr/lib/x86_64-linux-gnu/libGL.so /usr/lib/x86_64-linux-gnu/libGLU.so /usr/lib/x86_64-linux-gnu/libGLEW.so -lglfw 

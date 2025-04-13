@@ -1,0 +1,3 @@
+/home/alexd/spg/azurevoxel/CMakeFiles/AzureVoxel.dir
+/home/alexd/spg/azurevoxel/CMakeFiles/edit_cache.dir
+/home/alexd/spg/azurevoxel/CMakeFiles/rebuild_cache.dir
