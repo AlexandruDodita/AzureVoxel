@@ -4,11 +4,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <cstdlib> // For system
 
 #include "headers/window.h"
 #include "headers/block.h"
 #include "headers/texture.h"
 #include "headers/camera.h"
+#include "headers/world.h"
 
 // Window dimensions
 const unsigned int SCREEN_WIDTH = 800;
@@ -18,9 +20,14 @@ const unsigned int SCREEN_HEIGHT = 600;
 float deltaTime = 0.0f;  // Time between current frame and last frame
 float lastFrame = 0.0f;  // Time of last frame
 
+// Performance statistics
+int frameCount = 0;
+float lastFpsTime = 0.0f;
+float fps = 0.0f;
+
 int main() {
     // Create window
-    Window window(SCREEN_WIDTH, SCREEN_HEIGHT, "Voxel World");
+    Window window(SCREEN_WIDTH, SCREEN_HEIGHT, "AzureVoxel - Press X for wireframe mode");
     
     // Initialize GLEW
     glewExperimental = GL_TRUE;
@@ -36,18 +43,20 @@ int main() {
     // Enable depth testing
     glEnable(GL_DEPTH_TEST);
     
-    // Create a camera
-    Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+    // Create a camera with elevated position for better view of terrain
+    Camera camera(glm::vec3(0.0f, 10.0f, 0.0f));
     camera.setMouseSensitivity(0.05f); // Reduced mouse sensitivity
     
-    // Create a block (grass block)
-    Block block(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.8f, 0.8f, 0.8f), 1.0f);
-    block.init();
+    // Generate texture before creating the world
+    std::cout << "Generating textures..." << std::endl;
+    // Use path relative to the project root, not the build directory
+    system("cd .. && python3 create_texture.py");
     
-    // Load grass texture
-    if (!block.loadTexture("res/textures/grass_block.png")) {
-        std::cerr << "Failed to load grass block texture!" << std::endl;
-    }
+    // Create a 3x3 grid of chunks (9 total) with fully filled blocks
+    // Set render distance to 2 (chunks) for optimal performance
+    std::cout << "Creating world with filled chunks..." << std::endl;
+    World world(2);
+    world.init(3); // Create a 3x3 grid of chunks (9 total)
     
     // Game loop
     while (!window.shouldClose()) {
@@ -55,6 +64,14 @@ int main() {
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        
+        // Calculate FPS
+        frameCount++;
+        if (currentFrame - lastFpsTime >= 1.0f) {
+            fps = frameCount / (currentFrame - lastFpsTime);
+            frameCount = 0;
+            lastFpsTime = currentFrame;
+        }
         
         // Process keyboard input for camera movement
         camera.processKeyboard(window.getWindow(), deltaTime);
@@ -75,20 +92,27 @@ int main() {
             glm::radians(camera.getFov()),                     // FOV
             static_cast<float>(SCREEN_WIDTH) / SCREEN_HEIGHT,  // Aspect ratio
             0.1f,                                              // Near plane
-            100.0f                                             // Far plane
+            1000.0f                                            // Far plane (increased for larger world)
         );
         
         // Clear the screen
         glClearColor(0.2f, 0.3f, 0.8f, 1.0f);  // Sky blue color
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        // Render the block
-        block.render(projection, view);
+        // Render the world (only chunks within render distance)
+        world.render(projection, view, camera);
+        
+        // Display camera position and FPS
+        std::cout << "\rCamera: [" << camera.getPosition().x << ", " 
+                  << camera.getPosition().y << ", " 
+                  << camera.getPosition().z << "]  FPS: " 
+                  << static_cast<int>(fps) << "   " << std::flush;
         
         // Swap buffers and poll events
         window.swapBuffers();
         window.pollEvents();
     }
     
+    std::cout << std::endl; // Add a newline after the loop ends
     return 0;
 }

@@ -7,10 +7,15 @@ class Texture {
 private:
     unsigned int textureID;
     int width, height, channels;
+    bool isShared; // Flag to indicate if texture is shared (to avoid double deletion)
 
 public:
     Texture();
     ~Texture();
+    
+    // Copy constructor and assignment operator for texture sharing
+    Texture(const Texture& other);
+    Texture& operator=(const Texture& other);
 
     // Loads a texture from a file
     bool loadFromFile(const std::string& filepath);

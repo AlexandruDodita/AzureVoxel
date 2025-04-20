@@ -15,6 +15,9 @@ set(SOURCES
     src/block.cpp
     src/texture.cpp
     src/camera.cpp
+    src/shader.cpp
+    src/chunk.cpp
+    src/world.cpp
 )
 
 # Headers
@@ -23,6 +26,9 @@ set(HEADERS
     headers/block.h
     headers/texture.h
     headers/camera.h
+    headers/shader.h
+    headers/chunk.h
+    headers/world.h
 )
 
 # Create executable

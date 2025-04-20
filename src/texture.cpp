@@ -5,18 +5,43 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../external/stb_image.h"
 
-Texture::Texture() : textureID(0), width(0), height(0), channels(0) {
+Texture::Texture() : textureID(0), width(0), height(0), channels(0), isShared(false) {
 }
 
 Texture::~Texture() {
-    if (textureID != 0) {
+    // Only delete the texture if it's not shared
+    if (textureID != 0 && !isShared) {
         glDeleteTextures(1, &textureID);
     }
 }
 
+// Copy constructor - share the texture ID
+Texture::Texture(const Texture& other)
+    : textureID(other.textureID), width(other.width), height(other.height), 
+      channels(other.channels), isShared(true) {
+}
+
+// Assignment operator - share the texture ID
+Texture& Texture::operator=(const Texture& other) {
+    if (this != &other) {
+        // Clean up current texture if we own it
+        if (textureID != 0 && !isShared) {
+            glDeleteTextures(1, &textureID);
+        }
+        
+        // Copy properties
+        textureID = other.textureID;
+        width = other.width;
+        height = other.height;
+        channels = other.channels;
+        isShared = true; // Mark as shared
+    }
+    return *this;
+}
+
 bool Texture::loadFromFile(const std::string& filepath) {
     // If we already have a texture loaded, delete it
-    if (textureID != 0) {
+    if (textureID != 0 && !isShared) {
         glDeleteTextures(1, &textureID);
         textureID = 0;
     }
@@ -56,6 +81,9 @@ bool Texture::loadFromFile(const std::string& filepath) {
     
     // Free image data
     stbi_image_free(data);
+    
+    // This is not a shared texture
+    isShared = false;
     
     return true;
 }

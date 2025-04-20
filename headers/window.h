@@ -16,6 +16,9 @@ private:
     double xOffset, yOffset;
     bool firstMouse;
     
+    // Wireframe mode
+    bool wireframeMode;
+    
     // Callback functions
     static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
     static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -40,6 +43,10 @@ public:
     
     // Input handling
     bool isKeyPressed(int key) const;
+    
+    // Wireframe mode
+    bool isWireframeMode() const { return wireframeMode; }
+    void toggleWireframeMode();
     
     // Prevent copying
     Window(const Window&) = delete;

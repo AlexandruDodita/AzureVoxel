@@ -1,0 +1,58 @@
+#pragma once
+
+#include <vector>
+#include <memory>
+#include <unordered_map>
+#include <glm/glm.hpp>
+#include "chunk.h"
+#include "camera.h"
+#include "block.h"
+
+// Hash function for glm::ivec2 to use in unordered_map
+struct IVec2Hash {
+    size_t operator()(const glm::ivec2& key) const {
+        return std::hash<int>()(key.x) ^ (std::hash<int>()(key.y) << 1);
+    }
+};
+
+class World {
+private:
+    // Map of chunk positions to chunks
+    std::unordered_map<glm::ivec2, std::shared_ptr<Chunk>, IVec2Hash> chunks;
+    
+    // Maximum number of chunks to render in each direction (e.g., 3 means a 7x7 grid of chunks will be rendered)
+    int renderDistance;
+    
+    // Size of each chunk in world units
+    const int chunkSize = 16; // Must match CHUNK_SIZE_X/Z from chunk.h
+    
+public:
+    // Constructor
+    World(int renderDistance = 3);
+    
+    // Destructor
+    ~World();
+    
+    // Initialize the world with a grid of chunks
+    void init(int gridSize = 5); // gridSize x gridSize chunks (default: 5x5 grid = 25 chunks)
+    
+    // Render visible chunks around the camera
+    void render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera);
+    
+    // Get chunk at the given CHUNK coordinates (if it exists)
+    std::shared_ptr<Chunk> getChunkAt(int chunkX, int chunkZ);
+    
+    // Add a new chunk at the given CHUNK coordinates
+    void addChunk(int chunkX, int chunkZ);
+    
+    // Convert world position to chunk coordinates
+    glm::ivec2 worldToChunkCoords(const glm::vec3& worldPos) const;
+    
+    // Get block at specific WORLD coordinates (can cross chunk boundaries)
+    std::shared_ptr<Block> getBlockAtWorldPos(int worldX, int worldY, int worldZ) const;
+    std::shared_ptr<Block> getBlockAtWorldPos(const glm::vec3& worldPos) const {
+        return getBlockAtWorldPos(static_cast<int>(std::floor(worldPos.x)), 
+                                  static_cast<int>(std::floor(worldPos.y)), 
+                                  static_cast<int>(std::floor(worldPos.z)));
+    }
+}; 

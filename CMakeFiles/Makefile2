@@ -54,10 +54,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/alexd/spg/azurevoxel
+CMAKE_SOURCE_DIR = /home/alexd/CLionProjects/AzureVoxel
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/alexd/spg/azurevoxel
+CMAKE_BINARY_DIR = /home/alexd/CLionProjects/AzureVoxel
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -81,14 +81,14 @@ clean: CMakeFiles/AzureVoxel.dir/clean
 CMakeFiles/AzureVoxel.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/alexd/spg/azurevoxel/CMakeFiles --progress-num=1,2,3,4,5,6 "Built target AzureVoxel"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/alexd/CLionProjects/AzureVoxel/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9 "Built target AzureVoxel"
 .PHONY : CMakeFiles/AzureVoxel.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/AzureVoxel.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/spg/azurevoxel/CMakeFiles 6
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/CLionProjects/AzureVoxel/CMakeFiles 9
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/AzureVoxel.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/spg/azurevoxel/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/CLionProjects/AzureVoxel/CMakeFiles 0
 .PHONY : CMakeFiles/AzureVoxel.dir/rule
 
 # Convenience name for target.

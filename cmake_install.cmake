@@ -1,4 +1,4 @@
-# Install script for directory: /home/alexd/spg/azurevoxel
+# Install script for directory: /home/alexd/CLionProjects/AzureVoxel
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/alexd/spg/azurevoxel/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/alexd/CLionProjects/AzureVoxel/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

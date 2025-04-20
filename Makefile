@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/alexd/spg/azurevoxel
+CMAKE_SOURCE_DIR = /home/alexd/CLionProjects/AzureVoxel
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/alexd/spg/azurevoxel
+CMAKE_BINARY_DIR = /home/alexd/CLionProjects/AzureVoxel
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/spg/azurevoxel/CMakeFiles /home/alexd/spg/azurevoxel//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/CLionProjects/AzureVoxel/CMakeFiles /home/alexd/CLionProjects/AzureVoxel//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/spg/azurevoxel/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/CLionProjects/AzureVoxel/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -201,6 +201,54 @@ src/camera.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/camera.cpp.s
 .PHONY : src/camera.cpp.s
 
+src/chunk.o: src/chunk.cpp.o
+.PHONY : src/chunk.o
+
+# target to build an object file
+src/chunk.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o
+.PHONY : src/chunk.cpp.o
+
+src/chunk.i: src/chunk.cpp.i
+.PHONY : src/chunk.i
+
+# target to preprocess a source file
+src/chunk.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/chunk.cpp.i
+.PHONY : src/chunk.cpp.i
+
+src/chunk.s: src/chunk.cpp.s
+.PHONY : src/chunk.s
+
+# target to generate assembly for a file
+src/chunk.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/chunk.cpp.s
+.PHONY : src/chunk.cpp.s
+
+src/shader.o: src/shader.cpp.o
+.PHONY : src/shader.o
+
+# target to build an object file
+src/shader.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/shader.cpp.o
+.PHONY : src/shader.cpp.o
+
+src/shader.i: src/shader.cpp.i
+.PHONY : src/shader.i
+
+# target to preprocess a source file
+src/shader.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/shader.cpp.i
+.PHONY : src/shader.cpp.i
+
+src/shader.s: src/shader.cpp.s
+.PHONY : src/shader.s
+
+# target to generate assembly for a file
+src/shader.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/shader.cpp.s
+.PHONY : src/shader.cpp.s
+
 src/texture.o: src/texture.cpp.o
 .PHONY : src/texture.o
 
@@ -249,6 +297,30 @@ src/window.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/window.cpp.s
 .PHONY : src/window.cpp.s
 
+src/world.o: src/world.cpp.o
+.PHONY : src/world.o
+
+# target to build an object file
+src/world.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/world.cpp.o
+.PHONY : src/world.cpp.o
+
+src/world.i: src/world.cpp.i
+.PHONY : src/world.i
+
+# target to preprocess a source file
+src/world.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/world.cpp.i
+.PHONY : src/world.cpp.i
+
+src/world.s: src/world.cpp.s
+.PHONY : src/world.s
+
+# target to generate assembly for a file
+src/world.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/world.cpp.s
+.PHONY : src/world.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -267,12 +339,21 @@ help:
 	@echo "... src/camera.o"
 	@echo "... src/camera.i"
 	@echo "... src/camera.s"
+	@echo "... src/chunk.o"
+	@echo "... src/chunk.i"
+	@echo "... src/chunk.s"
+	@echo "... src/shader.o"
+	@echo "... src/shader.i"
+	@echo "... src/shader.s"
 	@echo "... src/texture.o"
 	@echo "... src/texture.i"
 	@echo "... src/texture.s"
 	@echo "... src/window.o"
 	@echo "... src/window.i"
 	@echo "... src/window.s"
+	@echo "... src/world.o"
+	@echo "... src/world.i"
+	@echo "... src/world.s"
 .PHONY : help
 
 

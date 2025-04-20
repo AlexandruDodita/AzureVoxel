@@ -6,7 +6,8 @@ Window* Window::currentWindow = nullptr;
 
 Window::Window(int width, int height, const std::string& title)
     : width(width), height(height), title(title), window(nullptr),
-      lastX(width / 2.0), lastY(height / 2.0), xOffset(0.0), yOffset(0.0), firstMouse(true) {
+      lastX(width / 2.0), lastY(height / 2.0), xOffset(0.0), yOffset(0.0), firstMouse(true),
+      wireframeMode(false) {
     
     // Initialize GLFW
     if (!glfwInit()) {
@@ -98,6 +99,11 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
+    
+    // Toggle wireframe mode on X key
+    if (key == GLFW_KEY_X && action == GLFW_PRESS && currentWindow) {
+        currentWindow->toggleWireframeMode();
+    }
 }
 
 void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos) {
@@ -116,4 +122,15 @@ void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos) {
     // Update the last position for the next frame
     currentWindow->lastX = xpos;
     currentWindow->lastY = ypos;
+}
+
+void Window::toggleWireframeMode() {
+    wireframeMode = !wireframeMode;
+    if (wireframeMode) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        std::cout << "Wireframe mode enabled" << std::endl;
+    } else {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        std::cout << "Wireframe mode disabled" << std::endl;
+    }
 }
