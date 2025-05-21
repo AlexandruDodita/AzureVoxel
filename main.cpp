@@ -54,9 +54,9 @@ int main() {
     
     // Create a 3x3 grid of chunks (9 total) with fully filled blocks
     // Set render distance to 2 (chunks) for optimal performance
-    std::cout << "Creating world with filled chunks..." << std::endl;
-    World world(12);
-    world.init(3); // Create a 3x3 grid of chunks (9 total)
+    // std::cout << "Creating world with filled chunks..." << std::endl; // Removed this line
+    World world(3); // Render distance changed to 3 chunks (adjust as needed for performance/view)
+    // world.init(3); // REMOVED - World is now loaded dynamically
     
     // Game loop
     while (!window.shouldClose()) {
@@ -99,6 +99,9 @@ int main() {
         glClearColor(0.2f, 0.3f, 0.8f, 1.0f);  // Sky blue color
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
+        // Update the world (load/unload chunks, build meshes)
+        world.update(camera);
+
         // Render the world (only chunks within render distance)
         world.render(projection, view, camera);
         

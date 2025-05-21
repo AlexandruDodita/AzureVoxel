@@ -15,6 +15,16 @@ struct IVec2Hash {
     }
 };
 
+// Required for std::set<glm::ivec2>
+struct IVec2Compare {
+    bool operator()(const glm::ivec2& a, const glm::ivec2& b) const {
+        if (a.x != b.x) {
+            return a.x < b.x;
+        }
+        return a.y < b.y;
+    }
+};
+
 class World {
 private:
     // Map of chunk positions to chunks
@@ -26,6 +36,11 @@ private:
     // Size of each chunk in world units
     const int chunkSize = 16; // Must match CHUNK_SIZE_X/Z from chunk.h
     
+    // Seed for world generation
+    int worldSeed_;
+    // Path for saving/loading chunk data
+    std::string worldDataPath_;
+
     // Save all loaded chunks to files
     void saveAllChunks() const;
 
@@ -36,8 +51,11 @@ public:
     // Destructor
     ~World();
     
-    // Initialize the world with a grid of chunks
-    void init(int gridSize = 5); // gridSize x gridSize chunks (default: 5x5 grid = 25 chunks)
+    // Initialize the world with a grid of chunks (REMOVED - world is loaded dynamically)
+    // void init(int gridSize = 5); 
+    
+    // Update active chunks based on camera position (dynamic loading/unloading)
+    void update(const Camera& camera);
     
     // Render visible chunks around the camera
     void render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera);

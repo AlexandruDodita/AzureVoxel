@@ -55,25 +55,25 @@ This file serves as the main entry point and orchestrator for the AzureVoxel app
     *   Enables depth testing for correct 3D rendering.
     *   Creates a `Camera` object, positioning it for a good view of the terrain and setting mouse sensitivity.
     *   (Note: The call to an external Python script `create_texture.py` to generate textures has been commented out, as textures are now expected to be pre-existing, e.g., `spritesheet.png`.)
-    *   Creates a `World` object, defining its render distance (currently 12 chunks) and initializing a grid of chunks.
+    *   Creates a `World` object, defining its render distance (e.g., 3 chunks, adjustable for performance/viewing needs). The world dynamically loads/generates chunks based on this render distance and player position via its `update()` method.
     *   Enters the main game loop which continues until the window is closed.
         *   Calculates `deltaTime` for frame-rate independent movement and physics.
         *   Calculates and updates Frames Per Second (FPS).
         *   Processes keyboard input via the `camera.processKeyboard()` method.
         *   Processes mouse input for camera orientation using `window.getMouseOffset()` and `camera.processMouseMovement()`.
         *   Creates the view matrix using `camera.getViewMatrix()`.
-        *   Creates the projection matrix using `glm::perspective`, defining the camera\'s field of view, aspect ratio, and near/far clipping planes.
+        *   Creates the projection matrix using `glm::perspective`, defining the camera's field of view, aspect ratio, and near/far clipping planes.
         *   Clears the screen with a sky blue color and clears the depth buffer.
-        *   Renders the world using `world.render()`, passing the projection, view matrices, and camera object.
+        *   Calls `world.update(camera)` to handle dynamic loading/unloading of chunks around the camera. This method now ensures chunks are initialized (loaded from file or generated using a seed, saved, and meshed) as they come into render distance.
+        *   Renders the currently loaded and active chunks using `world.render()`, passing the projection, view matrices, and camera object.
         *   Prints the current camera position and FPS to the console.
         *   Swaps the front and back buffers of the window (`window.swapBuffers()`) to display the rendered frame.
-        *   Polls for window events like keyboard presses or mouse movements (`window.pollEvents()`).
     *   After the loop ends (window is closed), it prints a newline and returns 0, indicating successful execution.
 
 ---
 
 ### `create_texture.py` in `./`
-This Python script is responsible for programmatically generating a texture for a grass block. It uses the Pillow (PIL) library to create and manipulate image data. (Note: This script is currently not actively used by `main.cpp` for block texture generation as of the latest changes; the system expects a `spritesheet.png` in `res/textures/`.) The generated texture has distinct top (grass), sides (dirt), and bottom (darker dirt) sections, with some added noise for visual variation and an outline. The script saves the generated texture to `res/textures/grass_block.png` and also copies it to `build/res/textures/grass_block.png` if the `build` directory exists.
+This Python script is responsible for programmatically generating a texture for a grass block. It uses the Pillow (PIL) library to create and manipulate image data. (Note: This script is currently not actively used by `main.cpp` for block texture generation as of the latest changes; the system expects a `Spritesheet.PNG` in `res/textures/`.) The generated texture has distinct top (grass), sides (dirt), and bottom (darker dirt) sections, with some added noise for visual variation and an outline. The script saves the generated texture to `res/textures/grass_block.png` and also copies it to `build/res/textures/grass_block.png` if the `build` directory exists.
 
 *   **(script execution)** - The script performs the following steps when run:
     *   Ensures the `res/textures` directory exists, creating it if necessary.
@@ -90,7 +90,7 @@ This Python script is responsible for programmatically generating a texture for 
     *   Prints messages to the console indicating the paths where the texture was saved and a final "Done!" message.
     *   **`generateTerrain()`:**
         *   Creates a temporary `representativeBlock`.
-        *   Calls `representativeBlock.init()` to compile shaders and `representativeBlock.loadTexture("res/textures/spritesheet.png")` to load the default block texture. This ensures these resources are prepared once per block type.
+        *   Calls `representativeBlock.init()` to compile shaders and `representativeBlock.loadTexture("res/textures/Spritesheet.PNG")` to load the default block texture. This ensures these resources are prepared once per block type.
         *   Iterates through all `x, y, z` coordinates within the chunk dimensions:
             *   Calculates the `blockWorldPos` for the current local coordinates.
             *   Creates a new `std::make_shared<Block>` at this world position.
@@ -101,7 +101,7 @@ This Python script is responsible for programmatically generating a texture for 
 ---
 
 ### `CMakeLists.txt` in `./`
-This file contains instructions for CMake, a cross-platform build system generator. It defines how the AzureVoxel project should be built, including specifying the C++ standard, finding necessary libraries (OpenGL, GLEW, GLFW), listing source and header files, creating the executable, setting include directories, and linking libraries. It also handles copying shader and resource files to the build directory.
+This file contains instructions for CMake, a cross-platform build system generator. It defines how the AzureVoxel project should be built, including specifying the C++ standard, finding necessary libraries (OpenGL, GLEW, GLFW), listing source and header files, creating the executable, setting include directories, and linking libraries. It also handles copying shader and resource files (including `Spritesheet.PNG`) to the build directory.
 
 *   **`cmake_minimum_required(VERSION 3.10)`** - Specifies the minimum required version of CMake.
 *   **`project(AzureVoxel)`** - Sets the name of the project to "AzureVoxel".
@@ -229,46 +229,42 @@ This header file defines the `Camera` class, which is responsible for managing t
 ---
 
 ### `headers/chunk.h` in `headers/`
-This header file defines the `Chunk` class and a helper struct `ChunkMesh`. A chunk is a fixed-size 3D segment of the game world, containing multiple blocks. This class is crucial for managing and rendering large voxel worlds efficiently by organizing blocks into manageable units and implementing mesh generation for visible block faces.
+This header file defines the `Chunk` class, which represents a 3D segment of the game world. It manages a collection of blocks, handles terrain generation, surface mesh creation for rendering, and serialization (saving/loading) of chunk data. It also declares constants for chunk dimensions.
 
 *   **Constants:**
-    *   `CHUNK_SIZE_X` (int): Defines the width of a chunk (number of blocks along the X-axis), set to 16.
-    *   `CHUNK_SIZE_Y` (int): Defines the height of a chunk (number of blocks along the Y-axis), set to 16.
-    *   `CHUNK_SIZE_Z` (int): Defines the depth of a chunk (number of blocks along the Z-axis), set to 16.
-*   **`ChunkMesh`** - A structure to hold OpenGL buffer objects (VAO, VBO, EBO) and the index count for a chunk\'s renderable mesh. This mesh typically consists only of the visible faces of the blocks within the chunk.
-    *   **Members:**
-        *   `VAO` (GLuint): Vertex Array Object for the chunk\'s mesh.
-        *   `VBO` (GLuint): Vertex Buffer Object for the chunk\'s mesh (stores vertex positions, normals, texture coordinates).
-        *   `EBO` (GLuint): Element Buffer Object for the chunk\'s mesh (stores indices for drawing).
-        *   `indexCount` (GLsizei): The number of indices to draw for this chunk\'s mesh.
-*   **`Chunk`** - Represents a 3D segment of the world containing a grid of blocks. It manages the blocks within its boundaries and is responsible for generating an optimized mesh of their visible faces for rendering.
+    *   `CHUNK_SIZE_X`, `CHUNK_SIZE_Y`, `CHUNK_SIZE_Z` (constexpr int): Define the dimensions of a chunk in blocks.
+*   **`ChunkMesh` (struct)**: A simple structure to hold OpenGL buffer IDs (VAO, VBO, EBO) and the index count for a chunk's renderable mesh.
+    *   `VAO, VBO, EBO` (GLuint): OpenGL object IDs.
+    *   `indexCount` (GLsizei): Number of indices to draw.
+*   **`Chunk` (class)**:
     *   **Private Members:**
-        *   `position` (glm::vec3): The world-space coordinates of the origin (e.g., corner with lowest x,y,z) of this chunk.
-        *   `blocks` (std::vector<std::vector<std::vector<std::shared_ptr<Block>>>>): A 3D vector (effectively a 3D array) storing shared pointers to `Block` objects. This structure holds all the blocks within the chunk.
-        *   `needsRebuild` (bool): A flag that indicates whether the chunk\'s `surfaceMesh` needs to be regenerated (e.g., after a block is added or removed).
-        *   `surfaceMesh` (ChunkMesh): The mesh data for rendering only the visible faces of the chunk.
-        *   `hasBlockAtLocal(int x, int y, int z) const` (bool): Checks if a non-air block exists at local chunk coordinates.
-        *   `buildSurfaceMesh(const World* world)` - Generates the `surfaceMesh` by iterating through blocks and adding faces that are exposed to air or adjacent to blocks in unloaded/different chunks. Requires a `World` pointer to check neighboring chunks.
-        *   `addFace(...)` - Helper method for `buildSurfaceMesh` to add vertex and index data for a single block face to the mesh buffers.
-        *   `getChunkFileName() const` (std::string) - Generates a unique filename for the chunk based on its position (e.g., \"chunk_0_0_0.chunk\"). Used internally for saving and loading.
-    *   **Private Methods:**
-        *   `hasBlockAtLocal(int x, int y, int z) const` (bool): Checks if a block exists (is not null) at the given local coordinates (0 to CHUNK_SIZE-1) within the chunk.
-        *   `buildSurfaceMesh(const World* world)` - Generates or regenerates the `surfaceMesh`. This involves iterating through all blocks in the chunk and, for each block, determining which of its faces are exposed (i.e., not adjacent to another solid block within this chunk or in a neighboring chunk). Only these exposed faces are added to the mesh data (vertices, indices, texture coordinates). It uses the `world` pointer to check adjacent blocks in neighboring chunks.
-        *   `addFace(const glm::vec3& corner, const glm::vec3& side1, const glm::vec3& side2, std::vector<float>& vertices, std::vector<unsigned int>& indices, const std::vector<float>& faceTexCoords)` - A helper method used by `buildSurfaceMesh` to add the vertex data (positions and texture coordinates) and indices for a single block face to the provided vectors.
-    *   **Public Methods:**
-        *   `Chunk(const glm::vec3& position)` - Constructor that initializes the chunk with a given world position. It also resizes the `blocks` 3D vector to the chunk dimensions.
-        *   `~Chunk()` - Destructor, responsible for calling `cleanupMesh()` to release OpenGL resources.
-        *   `init(const World* world)` - Initializes the chunk. This typically involves calling `generateTerrain()` to populate the chunk with blocks and then `buildSurfaceMesh(world)` to create the initial renderable mesh.
-        *   `generateTerrain()` - Populates the chunk with blocks. The current implementation in `chunk.cpp` seems to fill the entire chunk with default blocks. In a more complex system, this would involve procedural generation algorithms.
-        *   `renderSurface(const glm::mat4& projection, const glm::mat4& view)` - Renders the chunk using its pre-built `surfaceMesh`. It binds the mesh\'s VAO, sets shader uniforms (model, view, projection matrices), binds the appropriate texture (likely a texture atlas for all block types), and draws the mesh using `glDrawElements`. This is the primary method for rendering chunks efficiently.
-        *   `renderAllBlocks(const glm::mat4& projection, const glm::mat4& view)` - Renders every block within the chunk individually by calling each block\'s `render()` method. This is less efficient than `renderSurface` and is likely used for debugging or for chunks very close to the camera where individual block interactions might be more detailed.
-        *   `getBlockAtLocal(int x, int y, int z) const` (std::shared_ptr<Block>) - Returns a shared pointer to the block at the specified local coordinates within the chunk. Returns `nullptr` if no block exists or coordinates are out of bounds.
-        *   `setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block)` - Places or replaces a block at the specified local coordinates. It sets `needsRebuild` to true because the chunk\'s mesh will need to be updated.
-        *   `removeBlockAtLocal(int x, int y, int z)` - Removes a block (sets the pointer to `nullptr`) at the specified local coordinates. It sets `needsRebuild` to true.
-        *   `getPosition() const` (glm::vec3) - Returns the world-space position of the chunk.
-        *   `needsMeshRebuild() const` (bool) - Returns the value of the `needsRebuild` flag.
-        *   `markMeshRebuilt()` - Sets the `needsRebuild` flag to false, typically called after `buildSurfaceMesh` has completed.
-        *   `cleanupMesh()` - Deletes the OpenGL buffer objects (VAO, VBO, EBO) associated with `surfaceMesh` to free up GPU memory.
+        *   `position` (glm::vec3): The world space position of the chunk (usually its minimum corner).
+        *   `blocks` (std::vector<std::vector<std::vector<std::shared_ptr<Block>>>>): A 3D vector storing shared pointers to the `Block` objects within the chunk.
+        *   `needsRebuild` (bool): Flag indicating if the `surfaceMesh` needs to be reconstructed due to changes in blocks.
+        *   `isInitialized_` (bool): Flag indicating whether the `ensureInitialized()` method has been successfully run for this chunk. True if the chunk has been loaded or generated and its mesh built.
+        *   `surfaceMesh` (ChunkMesh): Holds the VAO, VBO, EBO, and index count for the chunk's optimized renderable mesh.
+        *   `hasBlockAtLocal(int x, int y, int z) const` (bool): Private helper to check for a block at local chunk coordinates.
+        *   `buildSurfaceMesh(const World* world)`: Private method to generate the `surfaceMesh` from visible block faces.
+        *   `addFace(...)`: (Potentially, if it were still present - this seems to have been removed or inlined in `buildSurfaceMesh` based on previous context, keeping a note here if its direct use was intended for documentation from an older state).
+        *   `getChunkFileName() const` (std::string): Private helper to generate a standardized filename for saving/loading this chunk based on its position.
+    *   **Public Members:**
+        *   `Chunk(const glm::vec3& position)` (Constructor): Initializes the chunk with its world `position` and sets `needsRebuild` to true and `isInitialized_` to false.
+        *   `~Chunk()` (Destructor): Cleans up OpenGL resources by calling `cleanupMesh()`.
+        *   `init(const World* world)`: Placeholder for initial setup. The primary role of loading/generating terrain and mesh is now handled by `ensureInitialized()`. This method can be used for minimal, non-conditional setup if needed in the future, but is currently kept simple as `ensureInitialized()` is called by the `World` object.
+        *   `generateTerrain(int seed)`: Populates the chunk with blocks based on a procedural generation algorithm (currently a simple noise function) using the provided `seed`.
+        *   `ensureInitialized(const World* world, int seed, const std::string& worldDataPath)`: The main method to prepare a chunk. It tries to load from file using `worldDataPath`. If not found, it calls `generateTerrain(seed)`, saves the new chunk, and then builds its surface mesh via `buildSurfaceMesh(world)`. Sets `isInitialized_` to true upon completion.
+        *   `isInitialized() const` (bool): Returns true if `ensureInitialized()` has completed for this chunk, false otherwise.
+        *   `renderSurface(const glm::mat4& projection, const glm::mat4& view)`: Renders the chunk using its `surfaceMesh`.
+        *   `renderAllBlocks(const glm::mat4& projection, const glm::mat4& view)`: Renders all blocks in the chunk individually (less efficient, for debugging or specific cases).
+        *   `getBlockAtLocal(int x, int y, int z) const` (std::shared_ptr<Block>): Retrieves a block at local chunk coordinates.
+        *   `setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block)`: Sets a block at local coordinates and marks `needsRebuild` as true.
+        *   `removeBlockAtLocal(int x, int y, int z)`: Removes a block at local coordinates and marks `needsRebuild` as true.
+        *   `getPosition() const` (glm::vec3): Returns the chunk's world `position`.
+        *   `needsMeshRebuild() const` (bool): Returns the `needsRebuild` flag.
+        *   `markMeshRebuilt()`: Sets `needsRebuild` to false.
+        *   `cleanupMesh()`: Deletes OpenGL buffers (VAO, VBO, EBO) associated with `surfaceMesh`.
+        *   `saveToFile(const std::string& directoryPath) const` (bool): Saves the chunk's block data to a file.
+        *   `loadFromFile(const std::string& directoryPath, const World* world)` (bool): Loads the chunk's block data from a file.
 
 ---
 
@@ -352,31 +348,35 @@ This header file defines the `Window` class, which encapsulates the creation and
 ---
 
 ### `headers/world.h` in `headers/`
-This header file defines the `World` class, which manages the overall game world, composed of multiple `Chunk` objects. It handles the storage, retrieval, and rendering of chunks based on the camera\'s position and a specified render distance. It also provides utility functions for converting between world coordinates and chunk coordinates.
+This header file defines the `World` class, which manages the overall game environment, including all chunks. It handles dynamic loading and unloading of chunks based on camera position and render distance, and provides access to blocks at world coordinates.
 
-*   **`IVec2Hash`** - A custom hash function struct for `glm::ivec2`. This is necessary to use `glm::ivec2` (which represents 2D integer chunk coordinates) as keys in `std::unordered_map`.
-    *   `operator()(const glm::ivec2& key) const` (size_t) - Computes a hash value for a `glm::ivec2` key by combining the hash of its x and y components.
-*   **`World`** - Manages the collection of all chunks in the game world, handling their creation, loading, and rendering.
+*   **`IVec2Hash` (struct)**: A custom hash function for `glm::ivec2` keys, enabling their use in `std::unordered_map`. It combines the hashes of the x and y components.
+*   **`IVec2Compare` (struct)**: A custom comparison function for `glm::ivec2` keys, enabling their use in `std::set`. It compares x components first, then y components.
+*   **`World` (class)**:
     *   **Private Members:**
-        *   `chunks` (std::unordered_map<glm::ivec2, std::shared_ptr<Chunk>, IVec2Hash>): Stores shared pointers to `Chunk` objects, mapped by their 2D chunk coordinates (X, Z).
-        *   `renderDistance` (int): The radius of chunks (in chunk units) around the player that should be loaded and rendered.
-        *   `chunkSize` (const int): The size of each chunk in one dimension (e.g., 16 blocks). Must match `CHUNK_SIZE_X/Z` in `chunk.h`.
-    *   **Private Methods:**
-        *   `saveAllChunks() const` - Iterates through all loaded chunks and calls their `saveToFile` method to persist their data. This is typically called when the world is being destroyed (e.g., game exit).
-    *   **Public Methods:**
-        *   `World(int renderDistance = 3)` - Constructor. Initializes `renderDistance` and creates the `chunk_data` directory if it doesn't exist.
-        *   `~World()` - Destructor. Clears the `chunks` map, which will lead to the destruction of the managed `Chunk` objects if their shared pointers are no longer referenced elsewhere.
-        *   `init(int gridSize = 5)` - Initializes the world by creating an initial grid of chunks. It creates a `gridSize` x `gridSize` square of chunks centered around (0,0). For each chunk position in this grid, it calls `addChunk()`.
-        *   `render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)` - Renders all chunks that are within the `renderDistance` of the camera.
-            *   It first determines the chunk coordinates (chunkX, chunkZ) where the camera is currently located using `worldToChunkCoords(camera.getPosition())`.
-            *   Then, it iterates in a square area around this central chunk, from `(cameraChunkX - renderDistance)` to `(cameraChunkX + renderDistance)` and `(cameraChunkZ - renderDistance)` to `(cameraChunkZ + renderDistance)`.
-            *   For each chunk coordinate pair in this range, it retrieves the corresponding chunk using `getChunkAt()`.
-            *   If the chunk exists, it calls the chunk\'s `renderSurface()` method (or potentially `renderAllBlocks()` for the chunk the player is in, as seen in `main.cpp`\'s logic though not explicitly in `world.cpp` shown so far). It ensures chunks have their meshes rebuilt if `needsMeshRebuild()` is true.
-        *   `getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>) - Retrieves a shared pointer to the chunk at the specified chunk coordinates (chunkX, chunkZ). Returns `nullptr` if no chunk exists at those coordinates.
-        *   `addChunk(int chunkX, int chunkZ)` - Creates a new `Chunk` at the given chunk coordinates (chunkX, chunkZ). It calculates the world position for the new chunk, creates a `std::make_shared<Chunk>` instance, calls `init(this)` on the new chunk (passing `this` world object for context like neighbor lookups during mesh building), and then stores it in the `chunks` map.
-        *   `worldToChunkCoords(const glm::vec3& worldPos) const` (glm::ivec2) - Converts a 3D world position (`worldPos`) into 2D chunk coordinates (X, Z). It divides the world X and Z coordinates by `chunkSize` and floors the result to get the integer chunk indices.
-        *   `getBlockAtWorldPos(int worldX, int worldY, int worldZ) const` (std::shared_ptr<Block>) - Retrieves a block from its absolute world coordinates. It first converts the world coordinates to chunk coordinates using `worldToChunkCoords`. Then, it gets the corresponding chunk using `getChunkAt()`. If the chunk exists, it calculates the local coordinates of the block within that chunk and calls the chunk\'s `getBlockAtLocal()` method. Returns `nullptr` if the chunk or block doesn\'t exist.
-        *   `getBlockAtWorldPos(const glm::vec3& worldPos) const` (std::shared_ptr<Block>) - An overloaded version of `getBlockAtWorldPos` that takes a `glm::vec3` for the world position. It converts the float coordinates to integers by flooring them and then calls the integer-based version.
+        *   `chunks` (std::unordered_map<glm::ivec2, std::shared_ptr<Chunk>, IVec2Hash>): An unordered map storing shared pointers to `Chunk` objects, keyed by their 2D chunk coordinates (x, z).
+        *   `renderDistance` (int): The number of chunks to load and render in each direction (x and z) from the player's current chunk. E.g., a value of 3 means a (2*3+1)x(2*3+1) = 7x7 grid.
+        *   `chunkSize` (const int): The size of each chunk in one dimension (e.g., 16 blocks). This must match the `CHUNK_SIZE_X/Z` constants in `chunk.h`.
+        *   `worldSeed_` (int): The seed used for procedural world generation, ensuring reproducible terrain if other parameters are the same.
+        *   `worldDataPath_` (std::string): The directory path where chunk files are saved and from where they are loaded.
+        *   `saveAllChunks() const`: A private helper method to iterate through all currently loaded chunks and call their `saveToFile()` method.
+    *   **Public Members:**
+        *   `World(int renderDistance = 3)` (Constructor): Initializes the world with a given `renderDistance`. It also creates the `chunk_data` directory if it doesn't exist, initializes `worldSeed_` to a default value, and `worldDataPath_` to point to the `chunk_data` directory.
+        *   `~World()` (Destructor): Calls `saveAllChunks()` to ensure all modified chunk data is written to disk before the world is destroyed.
+        *   `update(const Camera& camera)`: This method is called every frame to manage which chunks are active.
+            *   It determines the player's current chunk coordinates.
+            *   It identifies a square region of chunks around the player based on `renderDistance`.
+            *   For each chunk coordinate in this active region: if the chunk is not already in the `chunks` map, a new `Chunk` object is created, and its `ensureInitialized(this, worldSeed_, worldDataPath_)` method is called. This method handles loading the chunk from file if it exists, or generating new terrain (using `worldSeed_`), saving it, and building its mesh if it does not.
+            *   It then iterates through the currently loaded chunks in the `chunks` map. If a chunk is found to be outside the new active region, it is saved to a file (if modified) and then removed from the `chunks` map to free resources.
+        *   `render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)`: Renders all currently loaded (and initialized) chunks.
+            *   It iterates through the `chunks` map.
+            *   Mesh building is no longer explicitly called here as `ensureInitialized` (called in `update`) guarantees that loaded/generated chunks have their meshes built if needed.
+            *   It distinguishes between the chunk the camera is currently in and other chunks, potentially using `renderAllBlocks` for the current chunk (for higher detail or effects) and `renderSurface` for others.
+        *   `getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>): Retrieves a chunk by its chunk coordinates. Returns `nullptr` if the chunk is not loaded.
+        *   `addChunk(int chunkX, int chunkZ)`: (Note: This method might be deprecated or its primary logic incorporated into `update`. The current `update` logic directly adds chunks if they are missing from the `activeChunkCoords` set and not found in `chunks` map.)
+        *   `worldToChunkCoords(const glm::vec3& worldPos) const` (glm::ivec2): Converts a 3D world position into 2D chunk coordinates (x, z).
+        *   `getBlockAtWorldPos(int worldX, int worldY, int worldZ) const` (std::shared_ptr<Block>): Retrieves a block at specific absolute world coordinates. It determines the correct chunk, then the local coordinates within that chunk, and returns the block.
+        *   `getBlockAtWorldPos(const glm::vec3& worldPos) const` (std::shared_ptr<Block>): Overload that takes a `glm::vec3` world position.
 
 ---
 
@@ -507,106 +507,57 @@ This file implements the `Camera` class methods declared in `headers/camera.h`. 
 ---
 
 ### `src/chunk.cpp` in `src/`
-This file implements the `Chunk` class methods, responsible for managing a `CHUNK_SIZE_X` x `CHUNK_SIZE_Y` x `CHUNK_SIZE_Z` segment of the game world. It includes logic for terrain generation within the chunk, building an optimized mesh of only the visible block faces (`buildSurfaceMesh`), rendering this mesh, and managing individual blocks. It requires `<glm/gtc/type_ptr.hpp>` for `glm::value_ptr` when setting shader uniforms.
+This file implements the `Chunk` class, which represents a segment of the game world composed of many blocks. It handles terrain generation within the chunk, mesh building for efficient rendering of visible block faces, and saving/loading chunk data to/from files.
 
-*   **Global Constants:**
-    *   `faceVertices` (const glm::vec3[][4]): A 2D array defining the 4 vertex positions for each of the 6 faces of a unit cube (centered at origin). Used by `buildSurfaceMesh`.
-        *   Indices: `[face_index][vertex_index_of_face]`
-        *   Face order: Back (-Z), Front (+Z), Left (-X), Right (+X), Bottom (-Y), Top (+Y).
-    *   `texCoords` (const glm::vec2[]): An array defining the 4 standard texture coordinates for a quadrilateral face (0,0 to 1,1). Used by `buildSurfaceMesh`.
-*   **`Chunk`** - (Implementation of methods)
-    *   **Constructor `Chunk(const glm::vec3& position)`:**
-        *   Initializes the chunk\'s `position` and sets `needsRebuild` to true.
-        *   Resizes the 3D `blocks` vector to the defined `CHUNK_SIZE` dimensions, initializing all block shared_ptrs to `nullptr`.
-    *   **Destructor `~Chunk()`:**
-        *   Calls `cleanupMesh()` to release any OpenGL resources associated with the chunk\'s mesh.
-    *   **`init(const World* world)`:**
-        *   Checks if terrain has been generated (e.g., by seeing if `blocks[0][0][0]` is null). If not, calls `generateTerrain()`.
-        *   Calls `buildSurfaceMesh(world)` to create the renderable mesh of visible faces.
-        *   Sets `needsRebuild` to false.
-    *   **`generateTerrain()`:**
-        *   Creates a temporary `representativeBlock`.
-        *   Calls `representativeBlock.init()` to compile shaders and `representativeBlock.loadTexture("res/textures/spritesheet.png")` to load the default block texture. This ensures these resources are prepared once per block type.
-        *   Iterates through all `x, y, z` coordinates within the chunk dimensions:
-            *   Calculates the `blockWorldPos` for the current local coordinates.
-            *   Creates a new `std::make_shared<Block>` at this world position.
-            *   Calls `block->shareTextureAndShaderFrom(representativeBlock)` to make the new block use the already prepared shader and texture, avoiding redundant work.
-            *   Calls `setBlockAtLocal(x, y, z, block)` to add the block to the chunk\'s internal `blocks` array.
-        *   Prints a message indicating the chunk at its position has been generated. (Currently, this fills the entire chunk with blocks).
-    *   **`buildSurfaceMesh(const World* world)`:**
-        *   Calls `cleanupMesh()` to clear any existing mesh data if this is a rebuild.
-        *   Initializes `meshVertices` (vector of floats for position and tex coords) and `meshIndices` (vector of unsigned ints for triangle indices).
-        *   Defines `neighborOffsets` (a 6x3 array) to easily get coordinates of adjacent blocks for face culling.
-        *   Iterates `y`, then `x`, then `z` through the chunk\'s dimensions:
-            *   If `!hasBlockAtLocal(x, y, z)`, skips to the next iteration (air block).
-            *   Calculates the `worldX, worldY, worldZ` of the current block.
-            *   Iterates through each of the 6 faces (`face = 0 to 5`):
-                *   Calculates the `neighborWorldX, neighborWorldY, neighborWorldZ` using `neighborOffsets`.
-                *   Checks if the neighbor block exists using `world->getBlockAtWorldPos(...)`. The `world` pointer is used here to check blocks in adjacent chunks.
-                *   If the neighbor is air (or outside the loaded world, meaning `getBlockAtWorldPos` returns null), then the current face is visible:
-                    *   Adds the 4 vertices for this face to `meshVertices`:
-                        *   Vertex positions are `(x,y,z) + faceVertices[face][i]`.
-                        *   Texture coordinates are `texCoords[i]`.
-                        *   Data is interleaved: (posX, posY, posZ, texU, texV).
-                    *   Adds 6 indices (for 2 triangles forming the quad) to `meshIndices`, using `vertexIndexOffset`.
-                    *   Increments `vertexIndexOffset` by 4.
-        *   If `meshVertices` is empty after checking all blocks (e.g., an entirely empty or internal chunk), sets `surfaceMesh.indexCount = 0` and returns.
-        *   Creates OpenGL buffers for the generated mesh data:
-            *   `glGenVertexArrays(1, &surfaceMesh.VAO)`
-            *   `glGenBuffers(1, &surfaceMesh.VBO)`
-            *   `glGenBuffers(1, &surfaceMesh.EBO)`
-        *   Binds `surfaceMesh.VAO`.
-        *   Configures `surfaceMesh.VBO`: binds it, uploads `meshVertices.data()` using `glBufferData`.
-        *   Configures `surfaceMesh.EBO`: binds it, uploads `meshIndices.data()` using `glBufferData`.
-        *   Sets up vertex attribute pointers for the VBO (interleaved data):
-            *   Position: `layout (location = 0)`, 3 floats, stride 5*sizeof(float), offset 0.
-            *   Texture Coords: `layout (location = 1)`, 2 floats, stride 5*sizeof(float), offset 3*sizeof(float).
-        *   Unbinds VBO and VAO.
-        *   Sets `surfaceMesh.indexCount` to `meshIndices.size()`.
-        *   Sets `needsRebuild = false`.
-    *   **`renderSurface(const glm::mat4& projection, const glm::mat4& view)`:**
-        *   Returns if `surfaceMesh.indexCount` or `surfaceMesh.VAO` is 0 (nothing to render).
-        *   Finds a `representativeBlock` from the chunk to get shared shader and texture information. (Iterates through `blocks` until a non-null block is found).
-        *   Returns if no `representativeBlock` is found.
-        *   Gets `shaderProg = representativeBlock->getShaderProgram()`. Returns if `shaderProg` is 0.
-        *   Activates the `shaderProg` using `glUseProgram()`.
-        *   Calculates the `model` matrix for the chunk: `glm::translate(glm::mat4(1.0f), position)`.
-        *   Sets "model", "view", and "projection" matrix uniforms in the shader.
-        *   If `representativeBlock->hasTextureState()` is true:
-            *   Sets "useTexture" uniform to true.
-            *   Activates texture unit 0 (`glActiveTexture(GL_TEXTURE0)`).
-            *   Binds the texture using `glBindTexture(GL_TEXTURE_2D, representativeBlock->getTextureID())`.
-            *   Sets "blockTexture" sampler uniform to 0.
-        *   Else (no texture):
-            *   Sets "useTexture" uniform to false.
-            *   Sets the "blockColor" uniform using the color obtained from `representativeBlock->getColor()`.
-        *   Binds `surfaceMesh.VAO`.
-        *   Draws the chunk mesh using `glDrawElements(GL_TRIANGLES, surfaceMesh.indexCount, GL_UNSIGNED_INT, 0)`.
-        *   Unbinds VAO and texture.
-    *   **`renderAllBlocks(const glm::mat4& projection, const glm::mat4& view)`:**
-        *   Iterates through all `x, y, z` coordinates within the chunk.
-        *   Gets `block = getBlockAtLocal(x, y, z)`.
-        *   If `block` exists, calls `block->render(projection, view)` to render it individually. (This is less efficient than `renderSurface`).
-    *   **`hasBlockAtLocal(int x, int y, int z) const` (bool):**
-        *   Checks if `x, y, z` are within the chunk\'s local bounds (0 to CHUNK_SIZE-1).
-        *   Returns `blocks[x][y][z] != nullptr`.
-    *   **`getBlockAtLocal(int x, int y, int z) const` (std::shared_ptr<Block>):**
-        *   Performs bounds checking for `x, y, z`. If out of bounds, returns `nullptr`.
-        *   Otherwise, returns `blocks[x][y][z]`.
-    *   **`setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block)`:**
-        *   Performs bounds checking. If out of bounds, returns.
-        *   Sets `blocks[x][y][z] = block`.
-        *   Sets `needsRebuild = true` because the chunk\'s mesh has changed.
-    *   **`removeBlockAtLocal(int x, int y, int z)`:**
-        *   Performs bounds checking. If out of bounds, returns.
-        *   If `blocks[x][y][z]` exists:
-            *   Sets `blocks[x][y][z] = nullptr`.
-            *   Sets `needsRebuild = true`.
-    *   **`getPosition() const` (glm::vec3):**
-        *   Returns the chunk\'s `position`.
-    *   **`cleanupMesh()`:**
-        *   If `surfaceMesh.VAO` is not 0, deletes VAO, VBO, and EBO using `glDeleteVertexArrays` and `glDeleteBuffers`.
-        *   Resets `surfaceMesh.VAO, VBO, EBO, indexCount` to 0.
+*   **`faceVertices` (const glm::vec3[][4])**: A constant array defining the vertex positions for each of the 6 faces of a cube, relative to the block's center.
+*   **`texCoords` (const glm::vec2[])**: A constant array defining the standard texture coordinates for a square face.
+*   **`Chunk(const glm::vec3& position)` (Constructor)**: Initializes a chunk at a given world `position`. Sets `needsRebuild` to true and `isInitialized_` to false. It also resizes the `blocks` 3D vector to the chunk dimensions, initially filled with `nullptr`.
+*   **`~Chunk()` (Destructor)**: Calls `cleanupMesh()` to release OpenGL resources associated with the chunk's surface mesh.
+*   **`init(const World* world)`**: This method's role has been significantly reduced. The primary initialization, including terrain generation/loading and mesh building, is now handled by `ensureInitialized()`. This method can be used for minimal, non-conditional setup if needed in the future, but is currently kept simple as `ensureInitialized()` is called by the `World` object.
+*   **`simpleNoise(int x, int y, int z, int seed)` (float)**: A placeholder noise function that generates a pseudo-random float value based on 3D coordinates and a `seed`. The `seed` parameter allows for reproducible noise generation. This is intended to be replaced with a more sophisticated noise algorithm like Perlin or Simplex noise.
+*   **`generateTerrain(int seed)`**: Populates the chunk with blocks based on a noise-generated height map.
+    *   It uses the `simpleNoise` function (with the provided `seed`) to determine the terrain height at each (x, z) column within the chunk.
+    *   Blocks are created up to the calculated `terrainHeight`. The top layer of blocks is currently assigned a "grass" texture, and blocks below it are assigned a "stone" texture by directly calling `loadTexture`. This is a simplification and will be replaced by a more robust block type and texture management system.
+    *   A `representativeBlock` is used to initialize and share shader and texture resources among new blocks to improve efficiency.
+*   **`buildSurfaceMesh(const World* world)`**: Constructs a single mesh for the chunk containing only the faces of blocks that are visible (i.e., adjacent to an air block or the boundary of the loaded world).
+    *   It iterates through each block in the chunk.
+    *   For each block, it checks its 6 neighbors (using `world->getBlockAtWorldPos()` for blocks in adjacent chunks or `hasBlockAtLocal` for blocks within the same chunk).
+    *   If a neighbor is an air block or outside the loaded world, the shared face is considered visible and its vertices (positions and texture coordinates) and indices are added to `meshVertices` and `meshIndices` vectors.
+    *   After processing all blocks, if `meshVertices` is not empty, it creates and populates OpenGL buffers (VAO, VBO, EBO) for the surface mesh.
+    *   Vertex attributes for position (location 0) and texture coordinates (location 1) are defined.
+    *   `surfaceMesh.indexCount` is updated, and `needsRebuild` is set to `false`.
+*   **`renderSurface(const glm::mat4& projection, const glm::mat4& view)`**: Renders the pre-built surface mesh of the chunk.
+    *   It first finds a `representativeBlock` within the chunk to access the shared shader program and texture.
+    *   It sets shader uniforms (model, view, projection matrices, texture usage, and fallback color). The model matrix is a translation to the chunk's world `position`.
+    *   If the representative block has a texture, it binds the texture. Otherwise, it uses the block's color.
+    *   It binds the `surfaceMesh.VAO` and draws the mesh using `glDrawElements`.
+*   **`renderAllBlocks(const glm::mat4& projection, const glm::mat4& view)`**: A slower rendering method that iterates through all blocks in the chunk and calls their individual `render()` methods. This is typically used for debugging or for the currently active/modifiable chunk where individual block rendering might be needed.
+*   **`hasBlockAtLocal(int x, int y, int z) const` (bool)**: Checks if a block exists at the given local coordinates within the chunk. Returns `false` if coordinates are out of bounds or if the block pointer is `nullptr`.
+*   **`getBlockAtLocal(int x, int y, int z) const` (std::shared_ptr<Block>)**: Returns a shared pointer to the block at the given local coordinates. Returns `nullptr` if coordinates are out of bounds or no block exists there.
+*   **`setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block)`**: Sets or replaces the block at the given local coordinates. If the block state changes (air to block or block to air), it sets `needsRebuild` to `true`.
+*   **`removeBlockAtLocal(int x, int y, int z)`**: Removes the block at the given local coordinates by setting its pointer to `nullptr`. If a block was present, it sets `needsRebuild` to `true`.
+*   **`cleanupMesh()`**: Deletes the OpenGL vertex array (VAO), vertex buffer (VBO), and element buffer (EBO) associated with the `surfaceMesh` and resets `surfaceMesh.indexCount` to 0.
+*   **`getPosition() const` (glm::vec3)**: Returns the world position of the chunk (typically the corner with the lowest x, y, z coordinates).
+*   **`getChunkFileName() const` (std::string)**: Generates a unique filename for the chunk based on its position (e.g., "chunk_X_Y_Z.chunk").
+*   **`saveToFile(const std::string& directoryPath) const` (bool)**: Saves the chunk's block data to a binary file in the specified directory.
+    *   Ensures the directory exists (creates it on Unix-like systems if not).
+    *   Writes a simplified representation of block data (1 for block, 0 for air) to the file. This will be expanded later to save block types/IDs.
+    *   Returns `true` on successful save, `false` otherwise.
+*   **`loadFromFile(const std::string& directoryPath, const World* world)` (bool)**: Loads the chunk's block data from a binary file.
+    *   If the file doesn't exist, it returns `false` (indicating the chunk needs to be generated).
+    *   Reads block data (currently 0 or 1) and recreates `Block` objects. Loaded blocks share texture and shader from a `representativeBlock`.
+    *   Sets `needsRebuild` to `true` if blocks are loaded.
+    *   Returns `true` on successful load, `false` otherwise (e.g., file not found, read error).
+*   **`ensureInitialized(const World* world, int seed, const std::string& worldDataPath)`**: This is the primary method for preparing a chunk.
+    *   If the chunk `isInitialized_` flag is true, it returns immediately.
+    *   It first attempts to `loadFromFile()` using `worldDataPath`.
+    *   If loading fails (e.g., file not found), it calls `generateTerrain(seed)` to populate the chunk with new terrain based on the provided `seed`.
+    *   After successful generation, it attempts to `saveToFile()` in `worldDataPath`.
+    *   If `needsRebuild` is true (either from loading an existing chunk or after generating a new one), it calls `buildSurfaceMesh(world)`.
+    *   Finally, it sets the `isInitialized_` flag to `true`.
+*   **`isInitialized() const` (bool)**: Returns the state of the `isInitialized_` flag, indicating whether `ensureInitialized()` has been successfully run for this chunk.
+*   **Private Members (Conceptual, based on .cpp changes):**
+    *   `isInitialized_` (bool): Flag to track if `ensureInitialized` has been called and completed for this chunk. Initialized to `false` in the constructor.
 
 ---
 
@@ -763,35 +714,41 @@ This file implements the `Window` class methods, providing the functionality for
 ---
 
 ### `src/world.cpp` in `src/`
-This file implements the `World` class methods, which manage the collection of chunks that make up the game world. It handles world initialization (creating a grid of chunks), rendering visible chunks based on camera position and render distance, and provides utilities for accessing chunks and blocks by various coordinate systems.
+This file implements the `World` class methods. It manages chunk loading, unloading, rendering, and provides access to blocks within the world. It uses a hardcoded directory `chunk_data` for saving and loading chunk files.
 
-*   **`World`** - (Implementation of methods)
-    *   **Constructor `World(int renderDistance)`:**
-        *   Initializes the `renderDistance` member.
-    *   **Destructor `~World()`:**
-        *   The comment indicates that smart pointers (`std::shared_ptr<Chunk>`) will handle the cleanup of `Chunk` objects when the `chunks` map is cleared or the `World` object is destroyed.
-    *   **`init(int gridSize)`:**
-        *   Calculates `halfGrid = gridSize / 2`.
-        *   **Generate Chunks:**
-            *   Iterates `x` from `-halfGrid` to `halfGrid`.
-            *   Iterates `z` from `-halfGrid` to `halfGrid`.
-            *   Calls `addChunk(x, z)` for each pair to create and store chunks in an initial grid.
-        *   **Build Meshes:**
-            *   Prints "Building chunk meshes..." to `std::cout`.
-            *   Iterates through the `chunks` map (using a structured binding `auto const& [pos, chunk]`).
-            *   Calls `chunk->init(this)` for each chunk. Passing `this` (the `World` object) allows chunks to query neighboring chunks during their mesh building process (e.g., for face culling). This step is done *after* all chunks are created to ensure neighbor information is available.
-        *   **Display Statistics:**
-            *   Calculates `totalBlocks` based on the number of chunks and chunk dimensions.
-            *   Prints the number of initialized chunks, total blocks in loaded chunks, and the render distance to `std::cout`.
-    *   **`render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)` - Renders all chunks that are within the `renderDistance` of the camera.
-        *   It first determines the chunk coordinates (chunkX, chunkZ) where the camera is currently located using `worldToChunkCoords(camera.getPosition())`.
-        *   Then, it iterates in a square area around this central chunk, from `(cameraChunkX - renderDistance)` to `(cameraChunkX + renderDistance)` and `(cameraChunkZ - renderDistance)` to `(cameraChunkZ + renderDistance)`.
-        *   For each chunk coordinate pair in this range, it retrieves the corresponding chunk using `getChunkAt()`.
-        *   If the chunk exists, it calls the chunk\'s `renderSurface()` method (or potentially `renderAllBlocks()` for the chunk the player is in, as seen in `main.cpp`\'s logic though not explicitly in `world.cpp` shown so far). It ensures chunks have their meshes rebuilt if `needsMeshRebuild()` is true.
-    *   **`getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>) - Retrieves a shared pointer to the chunk at the specified chunk coordinates (chunkX, chunkZ). Returns `nullptr` if no chunk exists at those coordinates.
-    *   **`addChunk(int chunkX, int chunkZ)` - Creates a new `Chunk` at the given chunk coordinates (chunkX, chunkZ). It calculates the world position for the new chunk, creates a `std::make_shared<Chunk>` instance, calls `init(this)` on the new chunk (passing `this` world object for context like neighbor lookups during mesh building), and then stores it in the `chunks` map.
-    *   **`worldToChunkCoords(const glm::vec3& worldPos) const` (glm::ivec2) - Converts a 3D world position (`worldPos`) into 2D chunk coordinates (X, Z). It divides the world X and Z coordinates by `chunkSize` and floors the result to get the integer chunk indices.
-    *   **`getBlockAtWorldPos(int worldX, int worldY, int worldZ) const` (std::shared_ptr<Block>) - Retrieves a block from its absolute world coordinates. It first converts the world coordinates to chunk coordinates using `worldToChunkCoords`. Then, it gets the corresponding chunk using `getChunkAt()`. If the chunk exists, it calculates the local coordinates of the block within that chunk and calls the chunk\'s `getBlockAtLocal()` method. Returns `nullptr` if the chunk or block doesn\'t exist.
+*   **`CHUNK_DATA_DIR` (const std::string)**: Defines the directory name ("chunk_data") for storing chunk files.
+*   **`World(int renderDistance)` (Constructor)**:
+    *   Initializes `renderDistance`.
+    *   Creates the `CHUNK_DATA_DIR` directory if it doesn't already exist (using `mkdir` for Unix-like systems).
+    *   Initializes `worldSeed_` to a hardcoded integer value (e.g., 12345).
+    *   Initializes `worldDataPath_` to the value of `CHUNK_DATA_DIR`.
+*   **`~World()` (Destructor)**:
+    *   Calls `saveAllChunks()` to ensure all data is persisted.
+*   **`update(const Camera& camera)`**:
+    *   Calculates the camera's current chunk coordinates (`playerChunkPos`).
+    *   Defines a `std::set` (`activeChunkCoords`) to keep track of chunks that should be loaded based on `renderDistance` around `playerChunkPos`.
+    *   Iterates from `playerChunkPos.x - renderDistance` to `playerChunkPos.x + renderDistance` (and similarly for z/y component of `playerChunkPos` which represents the chunk's Z coordinate):
+        *   For each `currentChunkKey` in this range, adds it to `activeChunkCoords`.
+        *   If `chunks.find(currentChunkKey)` is not found (chunk is not loaded):
+            *   A new `Chunk` is created at the corresponding world position.
+            *   `newChunk->ensureInitialized(this, worldSeed_, worldDataPath_)` is called. This method encapsulates the logic: it attempts to load the chunk from `worldDataPath_`; if that fails, it generates new terrain using `worldSeed_`, saves the newly generated chunk to `worldDataPath_`, and builds its surface mesh.
+            *   The `newChunk` is then added to the `chunks` map.
+    *   Iterates through the `chunks` map to find chunks to unload:
+        *   If a chunk's key is not found in `activeChunkCoords`, it means it's outside the render distance.
+        *   The chunk is saved using `it->second->saveToFile(worldDataPath_)`.
+        *   The chunk is then removed from the `chunks` map using `chunks.erase(it)`.
+*   **`render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)`**:
+    *   Determines the camera's current chunk coordinates (`camChunkPos`).
+    *   Iterates through all chunks in the `chunks` map:
+        *   The check `chunk->needsMeshRebuild()` and the call to `chunk->buildSurfaceMesh(this)` have been removed from this method. Mesh building is now handled within `chunk->ensureInitialized()`, which is called during the `World::update()` phase.
+        *   It checks if the current iterating chunk (`pos`) is the same as `camChunkPos`.
+        *   If it is the current chunk, `chunk->renderAllBlocks()` might be called (potentially for different rendering effects or higher detail on the player's current chunk).
+        *   Otherwise, `chunk->renderSurface()` is called for efficient rendering of other chunks.
+*   **`getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>)**: (Implementation details as per header description).
+*   **`worldToChunkCoords(const glm::vec3& worldPos) const` (glm::ivec2)**: (Implementation details as per header description).
+*   **`getBlockAtWorldPos(int worldX, int worldY, int worldZ) const` (std::shared_ptr<Block>)**: (Implementation details as per header description).
+*   **`saveAllChunks() const`**:
+    *   Iterates through all chunks in the `chunks` map and calls `chunk->saveToFile(worldDataPath_)` for each valid chunk.
 
 ---
 
@@ -805,25 +762,14 @@ This file likely contains the GLSL code for the vertex shader used by the applic
 This file likely contains the GLSL code for the fragment shader (also known as a pixel shader). Fragment shaders are responsible for determining the final color of each pixel on the screen. This typically involves texture sampling, lighting calculations, and other effects.
 *(Note: Content not read, this is a general description)*
 
----
-
-### `shaders/vortex.glsl` in `shaders/`
-This file is present in the shaders directory but was noted to be empty (0 bytes). It might be a placeholder for a future shader or an unused remnant.
-*(Note: File is empty)*
-
----
-
-### `res/textures/grass_block.png` in `res/textures/`
-This is an image file for a grass block texture. It can be programmatically generated by `create_texture.py`. (Note: As of the latest changes, the primary block texture loaded by default is `spritesheet.png`. This file might be unused or used for other purposes if `create_texture.py` is run manually.)
-*(Note: This is an image file, content not displayed as text)*
-
-### `res/textures/spritesheet.png` in `res/textures/`
-This is the primary spritesheet image file intended for block textures. It is loaded by default in `Chunk::generateTerrain`. If this file is a texture atlas, all block faces will currently map the entire atlas. Specific sub-texture selection would require UV coordinate adjustments. If blocks appear white or untextured, ensure this file exists at `res/textures/spritesheet.png` (accessible from the build directory as `build/res/textures/spritesheet.png`), that it is a valid image file, and check the console output for any texture loading error messages.
-*(Note: This is an image file, content not displayed as text)*
 
 ---
 ### `external/stb_image.h` in `external/`
 This is a single-file public domain image loading library for C/C++. It's used in this project (specifically in `src/texture.cpp`) to load image files (like PNGs for textures) from disk into memory so they can be processed and uploaded to the GPU as OpenGL textures.
 *(Note: Third-party library header, content not detailed here but widely available)*
+
+### `res/textures/Spritesheet.PNG` in `res/textures/`
+This is the primary spritesheet image file intended for block textures. It is loaded by default in `Chunk::generateTerrain`. If this file is a texture atlas, all block faces will currently map the entire atlas. Specific sub-texture selection would require UV coordinate adjustments. If blocks appear white or untextured, ensure this file exists at `res/textures/Spritesheet.PNG` (accessible from the build directory as `build/res/textures/Spritesheet.PNG`), that it is a valid image file, and check the console output for any texture loading error messages.
+*(Note: This is an image file, content not displayed as text)*
 
  

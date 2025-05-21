@@ -34,7 +34,7 @@ const glm::vec2 texCoords[] = {
     {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}
 };
 
-Chunk::Chunk(const glm::vec3& position) : position(position), needsRebuild(true) {
+Chunk::Chunk(const glm::vec3& position) : position(position), needsRebuild(true), isInitialized_(false) {
     // Initialize the 3D vector of blocks with nullptr
     blocks.resize(CHUNK_SIZE_X, 
                  std::vector<std::vector<std::shared_ptr<Block>>>(
@@ -47,29 +47,28 @@ Chunk::~Chunk() {
 }
 
 void Chunk::init(const World* world) {
-    if (!blocks[0][0][0]) { // Only generate terrain once
-         generateTerrain();
-    }
-    buildSurfaceMesh(world);
-    needsRebuild = false;
+    // This method's role changes. The primary initialization including
+    // terrain generation/loading and mesh building will be handled by ensureInitialized.
+    // For now, we can leave it empty or for very minimal, non-conditional setup if any.
+    // The world object will call ensureInitialized with appropriate parameters.
 }
 
 // Simple noise function (replace with a proper Perlin/Simplex noise later)
-float simpleNoise(int x, int y, int z) {
+float simpleNoise(int x, int y, int z, int seed) {
     // Combine inputs and use a simple hashing-like approach
     // This is NOT a good noise function, just a placeholder
-    int h = x * 374761393 + y * 668265263 + z * 104729;
+    int h = x * 374761393 + y * 668265263 + z * 104729 + seed;
     h = (h ^ (h >> 13)) * 1274126177;
     return static_cast<float>((h ^ (h >> 16)) & 0x7fffffff) / static_cast<float>(0x7fffffff);
 }
 
-void Chunk::generateTerrain() {
+void Chunk::generateTerrain(int seed) {
     Block representativeBlock(glm::vec3(0.0f), glm::vec3(0.8f), 1.0f);
     representativeBlock.init();
     // For now, load a default grass-like texture for all blocks
     // We'll need a way to map noise values to different block types/textures later
     // The first texture (0,0) in the spritesheet, assuming 16x16 textures
-    representativeBlock.loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); 
+    representativeBlock.loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16);
 
     for (int x = 0; x < CHUNK_SIZE_X; x++) {
         for (int z = 0; z < CHUNK_SIZE_Z; z++) {
@@ -79,7 +78,7 @@ void Chunk::generateTerrain() {
 
             // Generate a height value using simple noise
             // Scale and offset noise to get a reasonable terrain height
-            float heightNoise = simpleNoise(worldX, 0, worldZ); // Using y=0 for 2D heightmap for now
+            float heightNoise = simpleNoise(worldX, 0, worldZ, seed); // Using y=0 for 2D heightmap for now
             int terrainHeight = static_cast<int>(CHUNK_SIZE_Y / 2 + heightNoise * (CHUNK_SIZE_Y / 4));
             terrainHeight = std::max(1, std::min(CHUNK_SIZE_Y -1, terrainHeight)); // Clamp height
 
@@ -104,7 +103,7 @@ void Chunk::generateTerrain() {
             }
         }
     }
-    std::cout << "Chunk at (" << position.x << "," << position.z << ") generated with noise-based terrain." << std::endl;
+    // std::cout << "Chunk at (" << position.x << "," << position.z << ") generated with noise-based terrain using seed." << std::endl;
 }
 
 // Builds a single mesh containing only the visible faces of the blocks in this chunk.
@@ -385,28 +384,43 @@ bool Chunk::loadFromFile(const std::string& directoryPath, const World* world) {
 
     Block representativeBlock(glm::vec3(0.0f), glm::vec3(0.8f), 1.0f);
     representativeBlock.init(); // Initialize shader once
-    // Default texture, will be overridden if block data specifies a type
-    representativeBlock.loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); 
+    // Default texture for all loaded blocks (unless blockData parsing is enhanced)
+    representativeBlock.loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); // Stone texture
+
+    constexpr size_t total_blocks = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
+    std::vector<unsigned char> block_data_buffer(total_blocks);
+
+    inFile.read(reinterpret_cast<char*>(block_data_buffer.data()), total_blocks);
+
+    if (inFile.gcount() != total_blocks) {
+        std::cerr << "Error: Could not read complete chunk data for: " << filePath 
+                  << ". Read " << inFile.gcount() << " bytes, expected " << total_blocks << std::endl;
+        inFile.close();
+        // It's safer to not partially load the chunk, treat as if file wasn't found or was corrupt.
+        // Clear any blocks that might have been set if we were processing block by block
+        for (size_t i = 0; i < total_blocks; ++i) {
+            blocks[i % CHUNK_SIZE_X]
+                  [(i / CHUNK_SIZE_X) % CHUNK_SIZE_Y]
+                  [i / (CHUNK_SIZE_X * CHUNK_SIZE_Y)] = nullptr;
+        }
+        return false; 
+    }
+    inFile.close(); // Close file as soon as data is in buffer
 
     bool hasAnyBlocks = false;
+    size_t buffer_idx = 0;
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
             for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
-                unsigned char blockData;
-                inFile.read(reinterpret_cast<char*>(&blockData), sizeof(blockData));
-                if (inFile.eof()) {
-                    std::cerr << "Error: Unexpected end of file while loading chunk: " << filePath << std::endl;
-                    inFile.close();
-                    return false; // Or handle as corrupted data
-                }
+                unsigned char blockData = block_data_buffer[buffer_idx++];
 
-                if (blockData == 1) { // Placeholder: block exists
+                if (blockData == 1) { // Placeholder: block exists, treat as stone for now
                     glm::vec3 blockWorldPos = position + glm::vec3(x, y, z);
                     auto block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f, 0.5f, 0.5f), 1.0f);
                     block->shareTextureAndShaderFrom(representativeBlock);
-                    // TODO: Load specific texture based on a more detailed blockData value later
-                    // For now, just use the representative block's texture (stone)
-                    block->loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); // Stone
+                    // The call below is redundant if shareTextureAndShaderFrom works correctly
+                    // and representativeBlock is already configured with the desired texture.
+                    // block->loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); 
                     setBlockAtLocal(x, y, z, block);
                     hasAnyBlocks = true;
                 } else {
@@ -416,14 +430,38 @@ bool Chunk::loadFromFile(const std::string& directoryPath, const World* world) {
         }
     }
 
-    inFile.close();
     if (hasAnyBlocks) {
       std::cout << "Chunk loaded from: " << filePath << std::endl;
     }
     needsRebuild = true; // Mesh needs to be rebuilt after loading
-    // The actual mesh building will be triggered by World or init method
-    // if (world) { buildSurfaceMesh(world); }
+    // isInitialized_ will be set by ensureInitialized
     return true;
+}
+
+void Chunk::ensureInitialized(const World* world, int seed, const std::string& worldDataPath) {
+    if (isInitialized_) {
+        return;
+    }
+
+    if (loadFromFile(worldDataPath, world)) {
+        std::cout << "Chunk " << getChunkFileName() << " loaded from file." << std::endl;
+        // Mesh will be built if needsRebuild is true, which loadFromFile ensures.
+    } else {
+        std::cout << "Chunk " << getChunkFileName() << " not found locally, generating..." << std::endl;
+        generateTerrain(seed);
+        if (!saveToFile(worldDataPath)) {
+            std::cerr << "Warning: Could not save newly generated chunk " << getChunkFileName() << std::endl;
+        }
+    }
+
+    if (needsRebuild) {
+        buildSurfaceMesh(world); // This also sets needsRebuild = false
+    }
+    isInitialized_ = true;
+}
+
+bool Chunk::isInitialized() const {
+    return isInitialized_;
 }
 
 

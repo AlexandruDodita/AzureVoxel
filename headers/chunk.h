@@ -33,6 +33,8 @@ private:
     // Flag to indicate if chunk mesh needs to be rebuilt
     bool needsRebuild;
     
+    bool isInitialized_; // Tracks if ensureInitialized has run
+    
     // Mesh data for rendering visible faces
     ChunkMesh surfaceMesh;
     
@@ -61,7 +63,13 @@ public:
     void init(const World* world);
     
     // Generate terrain for the chunk (fills the entire chunk with blocks)
-    void generateTerrain();
+    void generateTerrain(int seed);
+
+    // Ensure the chunk is initialized (loaded or generated and meshed)
+    void ensureInitialized(const World* world, int seed, const std::string& worldDataPath);
+
+    // Check if the chunk has been initialized
+    bool isInitialized() const;
     
     // Render the chunk's surface mesh
     void renderSurface(const glm::mat4& projection, const glm::mat4& view);

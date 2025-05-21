@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include <sys/stat.h> // For mkdir
+#include <set> // For std::set in update method
 
 const std::string CHUNK_DATA_DIR = "chunk_data";
 
@@ -9,6 +10,9 @@ World::World(int renderDistance) : renderDistance(renderDistance) {
     // Create chunk_data directory if it doesn't exist
     mkdir(CHUNK_DATA_DIR.c_str(), 0755); // Unix-like
     // For Windows, you might need #include <direct.h> and _mkdir(CHUNK_DATA_DIR.c_str());
+
+    worldSeed_ = 12345; // Example hardcoded seed
+    worldDataPath_ = CHUNK_DATA_DIR;
 }
 
 World::~World() {
@@ -16,66 +20,72 @@ World::~World() {
     // Smart pointers will handle chunk cleanup
 }
 
-void World::init(int gridSize) {
-    // Create a grid of chunks centered at (0,0)
-    int halfGrid = gridSize / 2;
+void World::update(const Camera& camera) {
+    glm::ivec2 playerChunkPos = worldToChunkCoords(camera.getPosition());
+    std::set<glm::ivec2, IVec2Compare> activeChunkCoords;
     
-    // Generate chunks in a grid
-    for (int x = -halfGrid; x <= halfGrid; x++) {
-        for (int z = -halfGrid; z <= halfGrid; z++) {
-            addChunk(x, z);
+    // Determine new active zone and load/generate chunks
+    for (int x = playerChunkPos.x - renderDistance; x <= playerChunkPos.x + renderDistance; ++x) {
+        for (int z = playerChunkPos.y - renderDistance; z <= playerChunkPos.y + renderDistance; ++z) {
+            glm::ivec2 currentChunkKey(x, z);
+            activeChunkCoords.insert(currentChunkKey);
+
+            if (chunks.find(currentChunkKey) == chunks.end()) { // Chunk not loaded
+                glm::vec3 chunkWorldPos(x * chunkSize, 0.0f, z * chunkSize);
+                auto newChunk = std::make_shared<Chunk>(chunkWorldPos);
+                
+                // ensureInitialized will try to load, then generate and save if not found.
+                // It also handles initial mesh building.
+                newChunk->ensureInitialized(this, worldSeed_, worldDataPath_);
+                
+                chunks[currentChunkKey] = newChunk;
+            }
         }
     }
-    
-    // Build meshes after all chunks are created (important for neighbor checks)
-    std::cout << "Building chunk meshes..." << std::endl;
-    for (auto const& [pos, chunk] : chunks) {
-        chunk->init(this); // Pass world pointer for neighbor checks
+
+    // Unload chunks outside the active zone
+    for (auto it = chunks.begin(); it != chunks.end(); /* no increment */) {
+        if (activeChunkCoords.find(it->first) == activeChunkCoords.end()) {
+            // Chunk is outside active zone, save and unload
+            // std::cout << "Unloading chunk at: " << it->first.x << ", " << it->first.y << std::endl;
+            it->second->saveToFile(CHUNK_DATA_DIR); 
+            it = chunks.erase(it); // Erase and get iterator to next element
+        } else {
+            ++it;
+        }
     }
-    
-    // Display statistics
-    int totalBlocks = chunks.size() * CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
-    std::cout << "World initialized with " << chunks.size() << " chunks" << std::endl;
-    std::cout << "Total blocks in loaded chunks: " << totalBlocks << std::endl;
-    std::cout << "Render distance: " << renderDistance << " chunks" << std::endl;
 }
 
 void World::render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera) {
-    // Calculate which chunk the camera is in
+    // Calculate which chunk the camera is in (primarily for renderAllBlocks heuristic)
     glm::ivec2 camChunkPos = worldToChunkCoords(camera.getPosition());
     
-    // Determine chunks to render based on render distance
     int renderedChunks = 0;
     
     for (auto const& [pos, chunk] : chunks) {
-        // Calculate Manhattan distance (faster than Euclidean) for chunk culling
-        int dist = std::abs(pos.x - camChunkPos.x) + std::abs(pos.y - camChunkPos.y);
-        
-        // Only process chunks within render distance
-        if (dist <= renderDistance) {
-            // Check if the chunk needs its mesh rebuilt
-            if (chunk->needsMeshRebuild()) {
-                 chunk->init(this); // Rebuild mesh if necessary (passing world)
-            }
+        // The active zone for loading is handled by World::update.
+        // Here we just render all currently loaded chunks.
+        // The `renderDistance` check here would be redundant if update correctly prunes chunks.
+        // However, keeping a looser check or just rendering all in `this->chunks` is fine.
+
+        // Mesh building is now handled by ensureInitialized during the update phase.
+        // if (chunk->needsMeshRebuild()) {
+        //     chunk->buildSurfaceMesh(this); 
+        // }
             
-            // Determine if this is the chunk the player is currently in
-            bool isCurrentChunk = (pos == camChunkPos);
+        bool isCurrentChunk = (pos == camChunkPos);
             
-            if (isCurrentChunk) {
-                // Render the current chunk fully by drawing all its blocks
-                chunk->renderAllBlocks(projection, view);
-            } else {
-                // Render other chunks using their optimized surface mesh
-                chunk->renderSurface(projection, view);
-            }
-            
-            renderedChunks++;
+        if (isCurrentChunk) {
+            chunk->renderAllBlocks(projection, view); // Potentially for closer detail or debugging
+        } else {
+            chunk->renderSurface(projection, view);
         }
+        renderedChunks++;
     }
     
     // Uncomment for debugging:
     // std::cout << "\rRendered " << renderedChunks << " of " << chunks.size() 
-    //           << " chunks. Current: (" << camChunkPos.x << "," << camChunkPos.y << ")" << std::flush;
+    //           << " chunks. Player at chunk: (" << camChunkPos.x << "," << camChunkPos.y << ")" << std::flush;
 }
 
 std::shared_ptr<Chunk> World::getChunkAt(int chunkX, int chunkZ) {
@@ -85,33 +95,6 @@ std::shared_ptr<Chunk> World::getChunkAt(int chunkX, int chunkZ) {
         return it->second;
     }
     return nullptr;
-}
-
-void World::addChunk(int chunkX, int chunkZ) {
-    glm::ivec2 pos(chunkX, chunkZ);
-    
-    // Don't add if chunk already exists
-    if (chunks.find(pos) != chunks.end()) {
-        return;
-    }
-    
-    // Calculate world position of chunk (bottom corner)
-    glm::vec3 worldPos(chunkX * chunkSize, 0, chunkZ * chunkSize);
-    
-    // Create the chunk (mesh will be built later in init)
-    auto chunk = std::make_shared<Chunk>(worldPos);
-    // chunk->init(this); // Don't init here, do it after all chunks exist
-    
-    // Add to chunk map
-    chunks[pos] = chunk;
-
-    // Attempt to load the chunk from file
-    if (!chunk->loadFromFile(CHUNK_DATA_DIR, this)) {
-        // If loading fails (e.g. file not found), generate it
-        // The generateTerrain itself will call setBlockAtLocal, which marks for rebuild.
-        chunk->generateTerrain(); 
-    }
-    // Note: Chunk::init which calls buildSurfaceMesh will be called later for all chunks
 }
 
 glm::ivec2 World::worldToChunkCoords(const glm::vec3& worldPos) const {
