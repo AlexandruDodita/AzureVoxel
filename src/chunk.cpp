@@ -8,6 +8,7 @@
 #include <fstream> // For file I/O
 #include <sys/stat.h> // For directory creation (Unix-like systems)
 #include <sstream> // For ostringstream
+#include <chrono> // For timing
 
 // --- Vertex data for a single block face ---
 // Order: Position (3 floats), Texture Coords (2 floats)
@@ -63,55 +64,76 @@ float simpleNoise(int x, int y, int z, int seed) {
 }
 
 void Chunk::generateTerrain(int seed) {
-    Block representativeBlock(glm::vec3(0.0f), glm::vec3(0.8f), 1.0f);
-    representativeBlock.init();
-    // For now, load a default grass-like texture for all blocks
-    // We'll need a way to map noise values to different block types/textures later
-    // The first texture (0,0) in the spritesheet, assuming 16x16 textures
-    representativeBlock.loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16);
+    // Create and initialize representative blocks for the two most common block types
+    // This avoids repeated texture loading and shader compilation
+    Block stoneBlock(glm::vec3(0.0f), glm::vec3(0.8f), 1.0f);
+    stoneBlock.init();
+    stoneBlock.loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); // Stone texture
+    
+    Block grassBlock(glm::vec3(0.0f), glm::vec3(0.8f), 1.0f);
+    grassBlock.shareTextureAndShaderFrom(stoneBlock); // Share shader - avoid recompilation
+    grassBlock.loadTexture("res/textures/Spritesheet.PNG", 16, 0, 16, 16); // Grass texture
 
+    // Pre-allocate memory for noise calculations to avoid reallocation
+    std::vector<int> heightMap(CHUNK_SIZE_X * CHUNK_SIZE_Z);
+    
+    // Step 1: Calculate heightmap first (separated to improve memory locality)
     for (int x = 0; x < CHUNK_SIZE_X; x++) {
         for (int z = 0; z < CHUNK_SIZE_Z; z++) {
             // Get world coordinates for noise calculation
             int worldX = static_cast<int>(position.x) + x;
             int worldZ = static_cast<int>(position.z) + z;
 
-            // Generate a height value using simple noise
-            // Scale and offset noise to get a reasonable terrain height
-            float heightNoise = simpleNoise(worldX, 0, worldZ, seed); // Using y=0 for 2D heightmap for now
+            // Calculate and store terrain height for this x,z column
+            float heightNoise = simpleNoise(worldX, 0, worldZ, seed);
             int terrainHeight = static_cast<int>(CHUNK_SIZE_Y / 2 + heightNoise * (CHUNK_SIZE_Y / 4));
-            terrainHeight = std::max(1, std::min(CHUNK_SIZE_Y -1, terrainHeight)); // Clamp height
+            terrainHeight = std::max(1, std::min(CHUNK_SIZE_Y - 1, terrainHeight));
+            heightMap[x * CHUNK_SIZE_Z + z] = terrainHeight;
+        }
+    }
 
-            for (int y = 0; y < CHUNK_SIZE_Y; y++) {
+    // Step 2: Create blocks (now with better memory locality and less branching)
+    for (int x = 0; x < CHUNK_SIZE_X; x++) {
+        for (int z = 0; z < CHUNK_SIZE_Z; z++) {
+            int terrainHeight = heightMap[x * CHUNK_SIZE_Z + z];
+            
+            // Set all blocks above terrain height to air (nullptr)
+            for (int y = terrainHeight; y < CHUNK_SIZE_Y; y++) {
+                blocks[x][y][z] = nullptr;
+            }
+            
+            // Set surface block (grass)
+            if (terrainHeight > 0) {
+                int y = terrainHeight - 1;
                 glm::vec3 blockWorldPos = position + glm::vec3(x, y, z);
-                if (y < terrainHeight) {
-                    auto block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f, 0.5f, 0.5f), 1.0f);
-                    block->shareTextureAndShaderFrom(representativeBlock);
-                    // For simplicity, let's assume the first texture in the spritesheet (0,0) is stone
-                    // and the second one (16,0) is grass, if y is the top layer.
-                    if (y == terrainHeight - 1) { // Top layer, make it grass
-                        // Create a new texture object for grass or ensure representative block is grass
-                        // For now, we'll just load it. This is inefficient and needs a block type system.
-                        block->loadTexture("res/textures/Spritesheet.PNG", 16, 0, 16, 16); // Assuming grass is at (16,0)
-                    } else { // Underground, make it stone
-                        block->loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); // Assuming stone is at (0,0)
-                    }
-                    setBlockAtLocal(x, y, z, block);
-                } else {
-                    setBlockAtLocal(x, y, z, nullptr); // Air block
+                auto block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f), 1.0f);
+                block->shareTextureAndShaderFrom(grassBlock);
+                blocks[x][y][z] = block;
+                
+                // Set underground blocks (stone) - all in one loop with shared properties
+                for (y = 0; y < terrainHeight - 1; y++) {
+                    blockWorldPos = position + glm::vec3(x, y, z);
+                    block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f), 1.0f);
+                    block->shareTextureAndShaderFrom(stoneBlock);
+                    blocks[x][y][z] = block;
                 }
             }
         }
     }
-    // std::cout << "Chunk at (" << position.x << "," << position.z << ") generated with noise-based terrain using seed." << std::endl;
+    
+    needsRebuild = true;
 }
 
 // Builds a single mesh containing only the visible faces of the blocks in this chunk.
 void Chunk::buildSurfaceMesh(const World* world) {
     cleanupMesh(); // Clear old mesh data if rebuilding
 
-    std::vector<float> meshVertices; // Stores vertex data (pos + texcoord)
-    std::vector<unsigned int> meshIndices;
+    // Reserve memory based on estimated size to prevent reallocations
+    // Assuming ~25% of potential faces are visible (conservative estimate)
+    const size_t estimatedFaces = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z * 6 / 4;
+    meshVertices.reserve(estimatedFaces * 4 * 5); // 4 vertices per face, 5 floats per vertex
+    meshIndices.reserve(estimatedFaces * 6); // 6 indices per face
+    
     unsigned int vertexIndexOffset = 0;
 
     // Define neighbor offsets for checking each face
@@ -124,9 +146,10 @@ void Chunk::buildSurfaceMesh(const World* world) {
         { 0,  1,  0}  // Top
     };
 
-    for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
-        for (int x = 0; x < CHUNK_SIZE_X; ++x) {
-            for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
+    // Iterate in the optimal order for memory access (x,z,y instead of y,x,z)
+    for (int x = 0; x < CHUNK_SIZE_X; ++x) {
+        for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
+            for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
                 if (!hasBlockAtLocal(x, y, z)) continue; // Skip air blocks
 
                 // Calculate the absolute world position of the current block
@@ -136,12 +159,27 @@ void Chunk::buildSurfaceMesh(const World* world) {
 
                 // Check all 6 neighbors
                 for (int face = 0; face < 6; ++face) {
-                    int neighborWorldX = worldX + neighborOffsets[face][0];
-                    int neighborWorldY = worldY + neighborOffsets[face][1];
-                    int neighborWorldZ = worldZ + neighborOffsets[face][2];
-
-                    // Check if the neighbor block exists (using the world query)
-                    if (!world || !world->getBlockAtWorldPos(neighborWorldX, neighborWorldY, neighborWorldZ)) {
+                    // First check if the neighbor is within this chunk - faster than world query
+                    int nx = x + neighborOffsets[face][0];
+                    int ny = y + neighborOffsets[face][1];
+                    int nz = z + neighborOffsets[face][2];
+                    
+                    bool isNeighborAir = false;
+                    
+                    if (nx >= 0 && nx < CHUNK_SIZE_X && 
+                        ny >= 0 && ny < CHUNK_SIZE_Y && 
+                        nz >= 0 && nz < CHUNK_SIZE_Z) {
+                        // Neighbor is within this chunk, use direct access
+                        isNeighborAir = !hasBlockAtLocal(nx, ny, nz);
+                    } else {
+                        // Neighbor is in adjacent chunk, use world query
+                        int neighborWorldX = worldX + neighborOffsets[face][0];
+                        int neighborWorldY = worldY + neighborOffsets[face][1];
+                        int neighborWorldZ = worldZ + neighborOffsets[face][2];
+                        isNeighborAir = !world || !world->getBlockAtWorldPos(neighborWorldX, neighborWorldY, neighborWorldZ);
+                    }
+                    
+                    if (isNeighborAir) {
                         // Neighbor is air or outside loaded world, so this face is visible
                         // Add the 4 vertices for this face
                         for (int i = 0; i < 4; ++i) {
@@ -331,6 +369,14 @@ void Chunk::cleanupMesh() {
         surfaceMesh.EBO = 0;
     }
     surfaceMesh.indexCount = 0;
+    
+    // Clear the vertex and index data to free memory
+    meshVertices.clear();
+    meshIndices.clear();
+    
+    // Force vector capacity to be reduced
+    std::vector<float>().swap(meshVertices);
+    std::vector<unsigned int>().swap(meshIndices);
 }
 
 glm::vec3 Chunk::getPosition() const {
@@ -357,19 +403,26 @@ bool Chunk::saveToFile(const std::string& directoryPath) const {
         return false;
     }
 
+    // Use a buffer to write all block data at once instead of separate writes
+    constexpr size_t total_blocks = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
+    std::vector<unsigned char> block_data_buffer(total_blocks);
+    
+    size_t buffer_idx = 0;
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
             for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
                 // Placeholder: Save 1 if block exists, 0 if air. 
                 // Later, this should be a block ID or type.
-                unsigned char blockData = (blocks[x][y][z] != nullptr) ? 1 : 0;
-                outFile.write(reinterpret_cast<const char*>(&blockData), sizeof(blockData));
+                block_data_buffer[buffer_idx++] = (blocks[x][y][z] != nullptr) ? 1 : 0;
             }
         }
     }
-
+    
+    // Write all data at once
+    outFile.write(reinterpret_cast<const char*>(block_data_buffer.data()), total_blocks);
     outFile.close();
-    std::cout << "Chunk saved to: " << filePath << std::endl;
+    
+    // Don't print for every chunk save - too noisy
     return true;
 }
 
@@ -378,14 +431,20 @@ bool Chunk::loadFromFile(const std::string& directoryPath, const World* world) {
     std::ifstream inFile(filePath, std::ios::binary);
     if (!inFile.is_open()) {
         // It's not an error if the file doesn't exist; it means the chunk needs to be generated.
-        // std::cerr << "Info: Chunk file not found, will generate new: " << filePath << std::endl;
         return false; 
     }
 
     Block representativeBlock(glm::vec3(0.0f), glm::vec3(0.8f), 1.0f);
     representativeBlock.init(); // Initialize shader once
-    // Default texture for all loaded blocks (unless blockData parsing is enhanced)
-    representativeBlock.loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); // Stone texture
+    
+    // Create two representative blocks - one for stone, one for grass
+    Block stoneBlock(glm::vec3(0.0f), glm::vec3(0.8f), 1.0f);
+    stoneBlock.shareTextureAndShaderFrom(representativeBlock);
+    stoneBlock.loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); // Stone texture
+    
+    Block grassBlock(glm::vec3(0.0f), glm::vec3(0.8f), 1.0f);
+    grassBlock.shareTextureAndShaderFrom(representativeBlock);
+    grassBlock.loadTexture("res/textures/Spritesheet.PNG", 16, 0, 16, 16); // Grass texture
 
     constexpr size_t total_blocks = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
     std::vector<unsigned char> block_data_buffer(total_blocks);
@@ -396,45 +455,38 @@ bool Chunk::loadFromFile(const std::string& directoryPath, const World* world) {
         std::cerr << "Error: Could not read complete chunk data for: " << filePath 
                   << ". Read " << inFile.gcount() << " bytes, expected " << total_blocks << std::endl;
         inFile.close();
-        // It's safer to not partially load the chunk, treat as if file wasn't found or was corrupt.
-        // Clear any blocks that might have been set if we were processing block by block
-        for (size_t i = 0; i < total_blocks; ++i) {
-            blocks[i % CHUNK_SIZE_X]
-                  [(i / CHUNK_SIZE_X) % CHUNK_SIZE_Y]
-                  [i / (CHUNK_SIZE_X * CHUNK_SIZE_Y)] = nullptr;
-        }
         return false; 
     }
     inFile.close(); // Close file as soon as data is in buffer
 
-    bool hasAnyBlocks = false;
+    // Process all the data in memory (more efficient)
     size_t buffer_idx = 0;
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
             for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
                 unsigned char blockData = block_data_buffer[buffer_idx++];
 
-                if (blockData == 1) { // Placeholder: block exists, treat as stone for now
+                if (blockData == 1) {
                     glm::vec3 blockWorldPos = position + glm::vec3(x, y, z);
-                    auto block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f, 0.5f, 0.5f), 1.0f);
-                    block->shareTextureAndShaderFrom(representativeBlock);
-                    // The call below is redundant if shareTextureAndShaderFrom works correctly
-                    // and representativeBlock is already configured with the desired texture.
-                    // block->loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16); 
-                    setBlockAtLocal(x, y, z, block);
-                    hasAnyBlocks = true;
+                    auto block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f), 1.0f);
+                    
+                    // If top layer (assumes fixed landscape), use grass texture
+                    if (y > 0 && buffer_idx < total_blocks && 
+                        block_data_buffer[buffer_idx] == 0) { // Check if block above is air
+                        block->shareTextureAndShaderFrom(grassBlock);
+                    } else {
+                        block->shareTextureAndShaderFrom(stoneBlock);
+                    }
+                    
+                    blocks[x][y][z] = block;
                 } else {
-                    setBlockAtLocal(x, y, z, nullptr); // Air
+                    blocks[x][y][z] = nullptr; // Air
                 }
             }
         }
     }
 
-    if (hasAnyBlocks) {
-      std::cout << "Chunk loaded from: " << filePath << std::endl;
-    }
-    needsRebuild = true; // Mesh needs to be rebuilt after loading
-    // isInitialized_ will be set by ensureInitialized
+    needsRebuild = true;
     return true;
 }
 
@@ -443,21 +495,30 @@ void Chunk::ensureInitialized(const World* world, int seed, const std::string& w
         return;
     }
 
-    if (loadFromFile(worldDataPath, world)) {
-        std::cout << "Chunk " << getChunkFileName() << " loaded from file." << std::endl;
-        // Mesh will be built if needsRebuild is true, which loadFromFile ensures.
-    } else {
-        std::cout << "Chunk " << getChunkFileName() << " not found locally, generating..." << std::endl;
+    // Start a timer to measure initialization time
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    bool wasLoaded = loadFromFile(worldDataPath, world);
+    if (!wasLoaded) {
         generateTerrain(seed);
-        if (!saveToFile(worldDataPath)) {
-            std::cerr << "Warning: Could not save newly generated chunk " << getChunkFileName() << std::endl;
-        }
+        saveToFile(worldDataPath);
     }
 
     if (needsRebuild) {
-        buildSurfaceMesh(world); // This also sets needsRebuild = false
+        buildSurfaceMesh(world);
     }
+    
     isInitialized_ = true;
+    
+    // Calculate and print initialization time (but don't spam console with every chunk)
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+    
+    // Only print timing info occasionally or for very slow chunks
+    if (duration > 100) { // Only print if it took longer than 100ms
+        std::cout << "Chunk " << getChunkFileName() << (wasLoaded ? " loaded" : " generated") 
+                  << " in " << duration << "ms" << std::endl;
+    }
 }
 
 bool Chunk::isInitialized() const {

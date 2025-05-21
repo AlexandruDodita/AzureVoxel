@@ -38,6 +38,10 @@ private:
     // Mesh data for rendering visible faces
     ChunkMesh surfaceMesh;
     
+    // Vertex and index data for mesh building
+    std::vector<float> meshVertices;
+    std::vector<unsigned int> meshIndices;
+    
     // Check if a block exists at local chunk coordinates
     bool hasBlockAtLocal(int x, int y, int z) const;
     

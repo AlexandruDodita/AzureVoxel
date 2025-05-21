@@ -4,6 +4,12 @@
 #include <memory>
 #include <unordered_map>
 #include <glm/glm.hpp>
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <functional>
+#include <condition_variable>
+#include <atomic>
 #include "chunk.h"
 #include "camera.h"
 #include "block.h"
@@ -40,6 +46,19 @@ private:
     int worldSeed_;
     // Path for saving/loading chunk data
     std::string worldDataPath_;
+    
+    // Threading support for chunk generation
+    std::thread workerThread_;
+    std::mutex queueMutex_;
+    std::condition_variable queueCondition_;
+    std::queue<std::function<void()>> taskQueue_;
+    std::atomic<bool> shouldTerminate_;
+    
+    // Worker thread function to process chunk generation tasks
+    void workerThreadFunction();
+    
+    // Add a task to the queue
+    void addTask(const std::function<void()>& task);
 
     // Save all loaded chunks to files
     void saveAllChunks() const;

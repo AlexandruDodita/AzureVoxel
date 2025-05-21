@@ -348,7 +348,7 @@ This header file defines the `Window` class, which encapsulates the creation and
 ---
 
 ### `headers/world.h` in `headers/`
-This header file defines the `World` class, which manages the overall game environment, including all chunks. It handles dynamic loading and unloading of chunks based on camera position and render distance, and provides access to blocks at world coordinates.
+This header file defines the `World` class, which manages the overall game environment, including all chunks. It handles dynamic loading and unloading of chunks based on camera position and render distance, and provides access to blocks at world coordinates. It uses a background worker thread to handle chunk generation to avoid freezing the game.
 
 *   **`IVec2Hash` (struct)**: A custom hash function for `glm::ivec2` keys, enabling their use in `std::unordered_map`. It combines the hashes of the x and y components.
 *   **`IVec2Compare` (struct)**: A custom comparison function for `glm::ivec2` keys, enabling their use in `std::set`. It compares x components first, then y components.
@@ -359,24 +359,30 @@ This header file defines the `World` class, which manages the overall game envir
         *   `chunkSize` (const int): The size of each chunk in one dimension (e.g., 16 blocks). This must match the `CHUNK_SIZE_X/Z` constants in `chunk.h`.
         *   `worldSeed_` (int): The seed used for procedural world generation, ensuring reproducible terrain if other parameters are the same.
         *   `worldDataPath_` (std::string): The directory path where chunk files are saved and from where they are loaded.
-        *   `saveAllChunks() const`: A private helper method to iterate through all currently loaded chunks and call their `saveToFile()` method.
+        *   `workerThread_` (std::thread): A background thread that processes chunk generation and loading tasks.
+        *   `queueMutex_` (std::mutex): A mutex to protect the task queue from concurrent access.
+        *   `queueCondition_` (std::condition_variable): A condition variable for worker thread synchronization.
+        *   `taskQueue_` (std::queue<std::function<void()>>): A queue of tasks to be executed by the worker thread.
+        *   `shouldTerminate_` (std::atomic<bool>): Flag to indicate when the worker thread should terminate.
+        *   `workerThreadFunction()`: The function executed by the worker thread to process generation tasks.
+        *   `addTask(const std::function<void()>& task)`: Adds a task to the queue for background processing.
+        *   `saveAllChunks() const`: A helper method to save all loaded chunks to disk.
     *   **Public Members:**
-        *   `World(int renderDistance = 3)` (Constructor): Initializes the world with a given `renderDistance`. It also creates the `chunk_data` directory if it doesn't exist, initializes `worldSeed_` to a default value, and `worldDataPath_` to point to the `chunk_data` directory.
-        *   `~World()` (Destructor): Calls `saveAllChunks()` to ensure all modified chunk data is written to disk before the world is destroyed.
-        *   `update(const Camera& camera)`: This method is called every frame to manage which chunks are active.
+        *   `World(int renderDistance = 3)` (Constructor): Initializes the world with a given `renderDistance`, creates directories, and starts the worker thread.
+        *   `~World()` (Destructor): Signals the worker thread to terminate, joins it, and saves all chunk data before destruction.
+        *   `update(const Camera& camera)`: This method is called every frame to manage the active chunks.
             *   It determines the player's current chunk coordinates.
             *   It identifies a square region of chunks around the player based on `renderDistance`.
-            *   For each chunk coordinate in this active region: if the chunk is not already in the `chunks` map, a new `Chunk` object is created, and its `ensureInitialized(this, worldSeed_, worldDataPath_)` method is called. This method handles loading the chunk from file if it exists, or generating new terrain (using `worldSeed_`), saving it, and building its mesh if it does not.
-            *   It then iterates through the currently loaded chunks in the `chunks` map. If a chunk is found to be outside the new active region, it is saved to a file (if modified) and then removed from the `chunks` map to free resources.
-        *   `render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)`: Renders all currently loaded (and initialized) chunks.
-            *   It iterates through the `chunks` map.
-            *   Mesh building is no longer explicitly called here as `ensureInitialized` (called in `update`) guarantees that loaded/generated chunks have their meshes built if needed.
-            *   It distinguishes between the chunk the camera is currently in and other chunks, potentially using `renderAllBlocks` for the current chunk (for higher detail or effects) and `renderSurface` for others.
-        *   `getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>): Retrieves a chunk by its chunk coordinates. Returns `nullptr` if the chunk is not loaded.
-        *   `addChunk(int chunkX, int chunkZ)`: (Note: This method might be deprecated or its primary logic incorporated into `update`. The current `update` logic directly adds chunks if they are missing from the `activeChunkCoords` set and not found in `chunks` map.)
-        *   `worldToChunkCoords(const glm::vec3& worldPos) const` (glm::ivec2): Converts a 3D world position into 2D chunk coordinates (x, z).
-        *   `getBlockAtWorldPos(int worldX, int worldY, int worldZ) const` (std::shared_ptr<Block>): Retrieves a block at specific absolute world coordinates. It determines the correct chunk, then the local coordinates within that chunk, and returns the block.
-        *   `getBlockAtWorldPos(const glm::vec3& worldPos) const` (std::shared_ptr<Block>): Overload that takes a `glm::vec3` world position.
+            *   It sorts chunks by distance to the player for prioritized loading.
+            *   For each necessary chunk not already loaded, it creates a placeholder and queues background initialization.
+            *   It unloads chunks that are outside the active region by saving them and removing them from the map.
+        *   `render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)`: Renders all currently loaded and initialized chunks.
+            *   It skips chunks that are still being initialized by the worker thread.
+            *   It distinguishes between the chunk the camera is currently in (using `renderAllBlocks`) and others (using `renderSurface`).
+        *   `getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>): Retrieves an initialized chunk by its chunk coordinates.
+        *   `addChunk(int chunkX, int chunkZ)`: Adds a new chunk at the specified coordinates and queues it for background initialization.
+        *   `worldToChunkCoords(const glm::vec3& worldPos) const` (glm::ivec2): Converts a 3D world position into 2D chunk coordinates.
+        *   `getBlockAtWorldPos(int worldX, int worldY, int worldZ) const` (std::shared_ptr<Block>): Retrieves a block at specific world coordinates.
 
 ---
 
@@ -513,48 +519,25 @@ This file implements the `Chunk` class, which represents a segment of the game w
 *   **`texCoords` (const glm::vec2[])**: A constant array defining the standard texture coordinates for a square face.
 *   **`Chunk(const glm::vec3& position)` (Constructor)**: Initializes a chunk at a given world `position`. Sets `needsRebuild` to true and `isInitialized_` to false. It also resizes the `blocks` 3D vector to the chunk dimensions, initially filled with `nullptr`.
 *   **`~Chunk()` (Destructor)**: Calls `cleanupMesh()` to release OpenGL resources associated with the chunk's surface mesh.
-*   **`init(const World* world)`**: This method's role has been significantly reduced. The primary initialization, including terrain generation/loading and mesh building, is now handled by `ensureInitialized()`. This method can be used for minimal, non-conditional setup if needed in the future, but is currently kept simple as `ensureInitialized()` is called by the `World` object.
-*   **`simpleNoise(int x, int y, int z, int seed)` (float)**: A placeholder noise function that generates a pseudo-random float value based on 3D coordinates and a `seed`. The `seed` parameter allows for reproducible noise generation. This is intended to be replaced with a more sophisticated noise algorithm like Perlin or Simplex noise.
-*   **`generateTerrain(int seed)`**: Populates the chunk with blocks based on a noise-generated height map.
-    *   It uses the `simpleNoise` function (with the provided `seed`) to determine the terrain height at each (x, z) column within the chunk.
-    *   Blocks are created up to the calculated `terrainHeight`. The top layer of blocks is currently assigned a "grass" texture, and blocks below it are assigned a "stone" texture by directly calling `loadTexture`. This is a simplification and will be replaced by a more robust block type and texture management system.
-    *   A `representativeBlock` is used to initialize and share shader and texture resources among new blocks to improve efficiency.
-*   **`buildSurfaceMesh(const World* world)`**: Constructs a single mesh for the chunk containing only the faces of blocks that are visible (i.e., adjacent to an air block or the boundary of the loaded world).
-    *   It iterates through each block in the chunk.
-    *   For each block, it checks its 6 neighbors (using `world->getBlockAtWorldPos()` for blocks in adjacent chunks or `hasBlockAtLocal` for blocks within the same chunk).
-    *   If a neighbor is an air block or outside the loaded world, the shared face is considered visible and its vertices (positions and texture coordinates) and indices are added to `meshVertices` and `meshIndices` vectors.
-    *   After processing all blocks, if `meshVertices` is not empty, it creates and populates OpenGL buffers (VAO, VBO, EBO) for the surface mesh.
-    *   Vertex attributes for position (location 0) and texture coordinates (location 1) are defined.
-    *   `surfaceMesh.indexCount` is updated, and `needsRebuild` is set to `false`.
-*   **`renderSurface(const glm::mat4& projection, const glm::mat4& view)`**: Renders the pre-built surface mesh of the chunk.
-    *   It first finds a `representativeBlock` within the chunk to access the shared shader program and texture.
-    *   It sets shader uniforms (model, view, projection matrices, texture usage, and fallback color). The model matrix is a translation to the chunk's world `position`.
-    *   If the representative block has a texture, it binds the texture. Otherwise, it uses the block's color.
-    *   It binds the `surfaceMesh.VAO` and draws the mesh using `glDrawElements`.
-*   **`renderAllBlocks(const glm::mat4& projection, const glm::mat4& view)`**: A slower rendering method that iterates through all blocks in the chunk and calls their individual `render()` methods. This is typically used for debugging or for the currently active/modifiable chunk where individual block rendering might be needed.
-*   **`hasBlockAtLocal(int x, int y, int z) const` (bool)**: Checks if a block exists at the given local coordinates within the chunk. Returns `false` if coordinates are out of bounds or if the block pointer is `nullptr`.
-*   **`getBlockAtLocal(int x, int y, int z) const` (std::shared_ptr<Block>)**: Returns a shared pointer to the block at the given local coordinates. Returns `nullptr` if coordinates are out of bounds or no block exists there.
-*   **`setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block)`**: Sets or replaces the block at the given local coordinates. If the block state changes (air to block or block to air), it sets `needsRebuild` to `true`.
-*   **`removeBlockAtLocal(int x, int y, int z)`**: Removes the block at the given local coordinates by setting its pointer to `nullptr`. If a block was present, it sets `needsRebuild` to `true`.
-*   **`cleanupMesh()`**: Deletes the OpenGL vertex array (VAO), vertex buffer (VBO), and element buffer (EBO) associated with the `surfaceMesh` and resets `surfaceMesh.indexCount` to 0.
-*   **`getPosition() const` (glm::vec3)**: Returns the world position of the chunk (typically the corner with the lowest x, y, z coordinates).
-*   **`getChunkFileName() const` (std::string)**: Generates a unique filename for the chunk based on its position (e.g., "chunk_X_Y_Z.chunk").
-*   **`saveToFile(const std::string& directoryPath) const` (bool)**: Saves the chunk's block data to a binary file in the specified directory.
-    *   Ensures the directory exists (creates it on Unix-like systems if not).
-    *   Writes a simplified representation of block data (1 for block, 0 for air) to the file. This will be expanded later to save block types/IDs.
-    *   Returns `true` on successful save, `false` otherwise.
-*   **`loadFromFile(const std::string& directoryPath, const World* world)` (bool)**: Loads the chunk's block data from a binary file.
-    *   If the file doesn't exist, it returns `false` (indicating the chunk needs to be generated).
-    *   Reads block data (currently 0 or 1) and recreates `Block` objects. Loaded blocks share texture and shader from a `representativeBlock`.
-    *   Sets `needsRebuild` to `true` if blocks are loaded.
-    *   Returns `true` on successful load, `false` otherwise (e.g., file not found, read error).
-*   **`ensureInitialized(const World* world, int seed, const std::string& worldDataPath)`**: This is the primary method for preparing a chunk.
-    *   If the chunk `isInitialized_` flag is true, it returns immediately.
-    *   It first attempts to `loadFromFile()` using `worldDataPath`.
-    *   If loading fails (e.g., file not found), it calls `generateTerrain(seed)` to populate the chunk with new terrain based on the provided `seed`.
-    *   After successful generation, it attempts to `saveToFile()` in `worldDataPath`.
-    *   If `needsRebuild` is true (either from loading an existing chunk or after generating a new one), it calls `buildSurfaceMesh(world)`.
-    *   Finally, it sets the `isInitialized_` flag to `true`.
+*   **`init(const World* world)`**: This method's role has been reduced. The primary initialization is now handled by `ensureInitialized()`. This is kept for minimal setup if needed in the future.
+*   **`simpleNoise(int x, int y, int z, int seed)` (float)**: A noise function that generates a pseudo-random float value based on 3D coordinates and a seed for reproducible terrain.
+*   **`generateTerrain(int seed)`**: Creates an optimized terrain using seed-based noise.
+    *   It uses shared representative blocks for stone and grass to reduce texture loading and shader compilation.
+    *   It pre-calculates the height map for all columns to improve memory locality.
+    *   It creates blocks efficiently by minimizing texture loading, using shared resources, and avoiding unnecessary block creation.
+*   **`buildSurfaceMesh(const World* world)`**: Builds an optimized mesh showing only visible block faces.
+    *   It pre-reserves memory for the mesh data to avoid reallocations.
+    *   It uses optimized iteration order for better memory locality.
+    *   It checks if neighbors are within the same chunk first (faster than world queries).
+    *   It only adds vertices and indices for visible faces.
+*   **`cleanupMesh()`**: Releases OpenGL resources and efficiently clears the mesh data to free memory.
+*   **`ensureInitialized(const World* world, int seed, const std::string& worldDataPath)`**: The primary method for initializing a chunk.
+    *   It times the initialization process for performance monitoring.
+    *   It first attempts to load from a file, then generates new terrain if needed.
+    *   It builds the mesh and marks the chunk as initialized.
+*   **`saveToFile/loadFromFile`**: Optimized methods for serializing and deserializing chunk data.
+    *   They use buffer-based I/O for better performance.
+    *   They share texture resources among blocks to reduce memory usage.
 *   **`isInitialized() const` (bool)**: Returns the state of the `isInitialized_` flag, indicating whether `ensureInitialized()` has been successfully run for this chunk.
 *   **Private Members (Conceptual, based on .cpp changes):**
     *   `isInitialized_` (bool): Flag to track if `ensureInitialized` has been called and completed for this chunk. Initialized to `false` in the constructor.
