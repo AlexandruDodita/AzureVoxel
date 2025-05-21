@@ -48,14 +48,14 @@ int main() {
     camera.setMouseSensitivity(0.05f); // Reduced mouse sensitivity
     
     // Generate texture before creating the world
-    std::cout << "Generating textures..." << std::endl;
+    // std::cout << "Generating textures..." << std::endl;
     // Use path relative to the project root, not the build directory
-    system("cd .. && python3 create_texture.py");
+    // system("cd .. && python3 create_texture.py");
     
     // Create a 3x3 grid of chunks (9 total) with fully filled blocks
     // Set render distance to 2 (chunks) for optimal performance
     std::cout << "Creating world with filled chunks..." << std::endl;
-    World world(2);
+    World world(12);
     world.init(3); // Create a 3x3 grid of chunks (9 total)
     
     // Game loop

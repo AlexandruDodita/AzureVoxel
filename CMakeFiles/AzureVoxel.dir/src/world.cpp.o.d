@@ -1,7 +1,7 @@
 CMakeFiles/AzureVoxel.dir/src/world.cpp.o: \
- /home/alexd/CLionProjects/AzureVoxel/src/world.cpp \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/world.cpp \
  /usr/include/stdc-predef.h \
- /home/alexd/CLionProjects/AzureVoxel/src/../headers/world.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/world.h \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -285,8 +285,10 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: \
  /usr/include/glm/detail/type_half.hpp \
  /usr/include/glm/detail/type_half.inl /usr/include/glm/integer.hpp \
  /usr/include/glm/detail/func_integer.inl \
- /home/alexd/CLionProjects/AzureVoxel/src/../headers/chunk.h \
- /usr/include/glm/gtc/matrix_transform.hpp \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/chunk.h \
+ /usr/include/GL/glew.h /usr/include/GL/glu.h /usr/include/GL/gl.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/block.h \
+ /usr/include/GLFW/glfw3.h /usr/include/glm/gtc/matrix_transform.hpp \
  /usr/include/glm/ext/matrix_projection.hpp \
  /usr/include/glm/gtc/constants.hpp \
  /usr/include/glm/ext/scalar_constants.hpp \
@@ -298,10 +300,7 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: \
  /usr/include/glm/ext/matrix_transform.hpp \
  /usr/include/glm/ext/matrix_transform.inl \
  /usr/include/glm/gtc/matrix_transform.inl \
- /home/alexd/CLionProjects/AzureVoxel/src/../headers/block.h \
- /usr/include/GL/glew.h /usr/include/GL/glu.h /usr/include/GL/gl.h \
- /usr/include/GLFW/glfw3.h \
- /home/alexd/CLionProjects/AzureVoxel/src/../headers/texture.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/texture.h \
  /usr/include/c++/13/string /usr/include/c++/13/bits/char_traits.h \
  /usr/include/c++/13/bits/localefwd.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++locale.h \
@@ -325,7 +324,7 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/types/error_t.h \
  /usr/include/c++/13/bits/charconv.h \
  /usr/include/c++/13/bits/basic_string.tcc \
- /home/alexd/CLionProjects/AzureVoxel/src/../headers/shader.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/shader.h \
  /usr/include/c++/13/fstream /usr/include/c++/13/istream \
  /usr/include/c++/13/ios /usr/include/c++/13/bits/ios_base.h \
  /usr/include/c++/13/bits/locale_classes.h \
@@ -348,9 +347,19 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++io.h \
  /usr/include/c++/13/bits/fstream.tcc /usr/include/c++/13/sstream \
  /usr/include/c++/13/bits/sstream.tcc /usr/include/c++/13/iostream \
- /home/alexd/CLionProjects/AzureVoxel/src/../headers/camera.h \
- /usr/include/c++/13/algorithm /usr/include/c++/13/bits/stl_algo.h \
- /usr/include/c++/13/bits/algorithmfwd.h \
- /usr/include/c++/13/bits/stl_heap.h \
- /usr/include/c++/13/bits/uniform_int_dist.h \
- /usr/include/c++/13/pstl/glue_algorithm_defs.h
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/camera.h \
+ /usr/include/x86_64-linux-gnu/sys/stat.h \
+ /usr/include/x86_64-linux-gnu/bits/stat.h \
+ /usr/include/x86_64-linux-gnu/bits/struct_stat.h \
+ /usr/include/x86_64-linux-gnu/bits/statx.h /usr/include/linux/stat.h \
+ /usr/include/linux/types.h /usr/include/x86_64-linux-gnu/asm/types.h \
+ /usr/include/asm-generic/types.h /usr/include/asm-generic/int-ll64.h \
+ /usr/include/x86_64-linux-gnu/asm/bitsperlong.h \
+ /usr/include/asm-generic/bitsperlong.h /usr/include/linux/posix_types.h \
+ /usr/include/linux/stddef.h \
+ /usr/include/x86_64-linux-gnu/asm/posix_types.h \
+ /usr/include/x86_64-linux-gnu/asm/posix_types_64.h \
+ /usr/include/asm-generic/posix_types.h \
+ /usr/include/x86_64-linux-gnu/bits/statx-generic.h \
+ /usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h \
+ /usr/include/x86_64-linux-gnu/bits/types/struct_statx.h

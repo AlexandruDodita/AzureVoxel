@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/alexd/CLionProjects/AzureVoxel
+CXX_INCLUDES = -I/home/alexd/Desktop/Projects/AzureVoxel
 
 CXX_FLAGS = -std=gnu++17
 

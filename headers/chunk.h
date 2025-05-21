@@ -47,6 +47,9 @@ private:
                  std::vector<float>& vertices, std::vector<unsigned int>& indices, 
                  const std::vector<float>& faceTexCoords);
 
+    // Helper to generate the chunk's filename for saving/loading
+    std::string getChunkFileName() const;
+
 public:
     // Constructor
     Chunk(const glm::vec3& position);
@@ -84,4 +87,8 @@ public:
     
     // Cleanup OpenGL resources
     void cleanupMesh();
+
+    // Save and load chunk data
+    bool saveToFile(const std::string& directoryPath) const;
+    bool loadFromFile(const std::string& directoryPath, const World* world);
 };

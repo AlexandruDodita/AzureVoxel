@@ -1,6 +1,7 @@
 CMakeFiles/AzureVoxel.dir/main.cpp.o: \
- /home/alexd/CLionProjects/AzureVoxel/main.cpp /usr/include/stdc-predef.h \
- /usr/include/c++/13/iostream /usr/include/c++/13/bits/requires_hosted.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/main.cpp \
+ /usr/include/stdc-predef.h /usr/include/c++/13/iostream \
+ /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
  /usr/include/features.h /usr/include/features-time64.h \
@@ -346,13 +347,13 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: \
  /usr/include/glm/ext/vector_uint1_sized.hpp /usr/include/c++/13/cstring \
  /usr/include/string.h /usr/include/strings.h \
  /usr/include/glm/gtc/type_ptr.inl \
- /home/alexd/CLionProjects/AzureVoxel/headers/window.h \
- /home/alexd/CLionProjects/AzureVoxel/headers/block.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/window.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/block.h \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/stl_uninitialized.h \
  /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \
  /usr/include/c++/13/bits/vector.tcc \
- /home/alexd/CLionProjects/AzureVoxel/headers/texture.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/texture.h \
  /usr/include/c++/13/memory /usr/include/c++/13/bits/stl_tempbuf.h \
  /usr/include/c++/13/bits/stl_raw_storage_iter.h \
  /usr/include/c++/13/bits/align.h /usr/include/c++/13/bits/unique_ptr.h \
@@ -367,8 +368,8 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: \
  /usr/include/c++/13/backward/auto_ptr.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/alexd/CLionProjects/AzureVoxel/headers/camera.h \
- /home/alexd/CLionProjects/AzureVoxel/headers/world.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/camera.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/world.h \
  /usr/include/c++/13/unordered_map \
  /usr/include/c++/13/bits/unordered_map.h \
  /usr/include/c++/13/bits/hashtable.h \
@@ -376,8 +377,8 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: \
  /usr/include/c++/13/bits/enable_special_members.h \
  /usr/include/c++/13/bits/node_handle.h \
  /usr/include/c++/13/bits/erase_if.h \
- /home/alexd/CLionProjects/AzureVoxel/headers/chunk.h \
- /home/alexd/CLionProjects/AzureVoxel/headers/shader.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/chunk.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/shader.h \
  /usr/include/c++/13/fstream /usr/include/c++/13/bits/codecvt.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++io.h \

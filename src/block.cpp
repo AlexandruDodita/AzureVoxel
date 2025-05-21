@@ -172,6 +172,12 @@ bool Block::loadTexture(const std::string& texturePath) {
     return false;
 }
 
+bool Block::loadTexture(const std::string& spritesheetPath, int atlasX, int atlasY, int atlasWidth, int atlasHeight) {
+    bool success = texture.loadFromSpritesheet(spritesheetPath, atlasX, atlasY, atlasWidth, atlasHeight);
+    hasTexture = success;
+    return success;
+}
+
 // Share texture AND shader program ID from another block
 void Block::shareTextureAndShaderFrom(const Block& other) {
     texture = other.texture; // Texture assignment operator handles sharing
@@ -191,6 +197,10 @@ void Block::setPosition(const glm::vec3& newPosition) {
 
 glm::vec3 Block::getPosition() const {
     return position;
+}
+
+glm::vec3 Block::getColor() const {
+    return color;
 }
 
 // Activate the shader program for this block type

@@ -1,12 +1,19 @@
 #include "../headers/world.h"
 #include <iostream>
 #include <cmath>
+#include <sys/stat.h> // For mkdir
+
+const std::string CHUNK_DATA_DIR = "chunk_data";
 
 World::World(int renderDistance) : renderDistance(renderDistance) {
+    // Create chunk_data directory if it doesn't exist
+    mkdir(CHUNK_DATA_DIR.c_str(), 0755); // Unix-like
+    // For Windows, you might need #include <direct.h> and _mkdir(CHUNK_DATA_DIR.c_str());
 }
 
 World::~World() {
-    // Smart pointers will handle cleanup
+    saveAllChunks();
+    // Smart pointers will handle chunk cleanup
 }
 
 void World::init(int gridSize) {
@@ -97,6 +104,14 @@ void World::addChunk(int chunkX, int chunkZ) {
     
     // Add to chunk map
     chunks[pos] = chunk;
+
+    // Attempt to load the chunk from file
+    if (!chunk->loadFromFile(CHUNK_DATA_DIR, this)) {
+        // If loading fails (e.g. file not found), generate it
+        // The generateTerrain itself will call setBlockAtLocal, which marks for rebuild.
+        chunk->generateTerrain(); 
+    }
+    // Note: Chunk::init which calls buildSurfaceMesh will be called later for all chunks
 }
 
 glm::ivec2 World::worldToChunkCoords(const glm::vec3& worldPos) const {
@@ -130,4 +145,14 @@ std::shared_ptr<Block> World::getBlockAtWorldPos(int worldX, int worldY, int wor
     }
 
     return chunk->getBlockAtLocal(localX, localY, localZ);
+}
+
+void World::saveAllChunks() const {
+    std::cout << "Saving all chunks..." << std::endl;
+    for (auto const& [pos, chunk] : chunks) {
+        if (chunk) {
+            chunk->saveToFile(CHUNK_DATA_DIR);
+        }
+    }
+    std::cout << "All chunks saved." << std::endl;
 } 

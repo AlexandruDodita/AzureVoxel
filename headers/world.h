@@ -26,6 +26,9 @@ private:
     // Size of each chunk in world units
     const int chunkSize = 16; // Must match CHUNK_SIZE_X/Z from chunk.h
     
+    // Save all loaded chunks to files
+    void saveAllChunks() const;
+
 public:
     // Constructor
     World(int renderDistance = 3);

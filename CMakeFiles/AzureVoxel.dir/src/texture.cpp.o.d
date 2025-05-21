@@ -1,7 +1,7 @@
 CMakeFiles/AzureVoxel.dir/src/texture.cpp.o: \
- /home/alexd/CLionProjects/AzureVoxel/src/texture.cpp \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/texture.cpp \
  /usr/include/stdc-predef.h \
- /home/alexd/CLionProjects/AzureVoxel/src/../headers/texture.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/texture.h \
  /usr/include/GL/glew.h /usr/include/c++/13/cstddef \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -158,7 +158,7 @@ CMakeFiles/AzureVoxel.dir/src/texture.cpp.o: \
  /usr/include/c++/13/bits/basic_ios.tcc \
  /usr/include/c++/13/bits/ostream.tcc /usr/include/c++/13/istream \
  /usr/include/c++/13/bits/istream.tcc \
- /home/alexd/CLionProjects/AzureVoxel/src/../external/stb_image.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../external/stb_image.h \
  /usr/include/c++/13/stdlib.h /usr/include/string.h \
  /usr/include/strings.h /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h \

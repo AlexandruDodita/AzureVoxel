@@ -41,10 +41,12 @@ public:
     
     // Texture methods
     bool loadTexture(const std::string& texturePath);
+    bool loadTexture(const std::string& spritesheetPath, int atlasX, int atlasY, int atlasWidth, int atlasHeight);
     // Pass by const reference to avoid overhead and indicate non-ownership transfer
     void shareTextureAndShaderFrom(const Block& other);
     
     glm::vec3 getPosition() const;
+    glm::vec3 getColor() const;
     
     // Methods needed by Chunk for mesh rendering
     GLuint getShaderProgram() const { return shaderProgram; }

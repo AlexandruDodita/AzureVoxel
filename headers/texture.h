@@ -20,6 +20,9 @@ public:
     // Loads a texture from a file
     bool loadFromFile(const std::string& filepath);
     
+    // Loads a texture from a specific region of a spritesheet
+    bool loadFromSpritesheet(const std::string& filepath, int atlasX, int atlasY, int atlasWidth, int atlasHeight);
+    
     // Binds the texture to the specified texture unit
     void bind(unsigned int textureUnit = 0) const;
     
