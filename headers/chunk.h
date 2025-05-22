@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 #include <glm/glm.hpp>
 #include <GL/glew.h>
 #include "block.h"
@@ -22,13 +23,22 @@ struct ChunkMesh {
     GLsizei indexCount = 0;
 };
 
-class Chunk {
+// NEW: Simple struct to hold block type information during data-only phase
+struct BlockInfo {
+    int type = 0; // 0 for air, 1 for stone, 2 for grass, etc.
+    // Add other non-OpenGL properties if needed (e.g. light level from world gen)
+};
+
+class Chunk : public std::enable_shared_from_this<Chunk> {
 private:
     // Chunk position in world space (position of the first block)
     glm::vec3 position;
     
-    // 3D array of blocks
-    std::vector<std::vector<std::vector<std::shared_ptr<Block>>>> blocks;
+    // Store BlockInfo during the data-only phase (populated by worker thread)
+    std::vector<std::vector<std::vector<BlockInfo>>> blockDataForInitialization_;
+    
+    // Store actual Block objects (populated by main thread in openglInitialize)
+    std::vector<std::vector<std::vector<std::shared_ptr<Block>>>> blocks_;
     
     // Flag to indicate if chunk mesh needs to be rebuilt
     bool needsRebuild;
@@ -56,6 +66,14 @@ private:
     // Helper to generate the chunk's filename for saving/loading
     std::string getChunkFileName() const;
 
+    // New method for OpenGL-dependent initialization (called by main thread)
+    void openglInitialize(World* world);
+
+    // Data-only preparation methods (called by worker thread)
+    void prepareBlockData(World* world, int seed, const std::string& worldDataPath);
+    void generateTerrain_DataOnly(int seed);
+    bool loadFromFile_DataOnly(const std::string& directoryPath, World* world);
+
 public:
     // Constructor
     Chunk(const glm::vec3& position);
@@ -70,13 +88,13 @@ public:
     void generateTerrain(int seed);
 
     // Ensure the chunk is initialized (loaded or generated and meshed)
-    void ensureInitialized(const World* world, int seed, const std::string& worldDataPath);
+    void ensureInitialized(World* world, int seed, const std::string& worldDataPath);
 
     // Check if the chunk has been initialized
     bool isInitialized() const;
     
     // Render the chunk's surface mesh
-    void renderSurface(const glm::mat4& projection, const glm::mat4& view);
+    void renderSurface(const glm::mat4& projection, const glm::mat4& view) const;
     
     // Render all blocks individually (for the current player chunk)
     void renderAllBlocks(const glm::mat4& projection, const glm::mat4& view);
@@ -102,5 +120,6 @@ public:
 
     // Save and load chunk data
     bool saveToFile(const std::string& directoryPath) const;
-    bool loadFromFile(const std::string& directoryPath, const World* world);
+    // loadFromFile is effectively replaced by _DataOnly and openglInitialize phases
+    // bool loadFromFile(const std::string& directoryPath, const World* world);
 };

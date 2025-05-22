@@ -28,7 +28,9 @@ private:
     static Window* currentWindow;
     
 public:
-    Window(int width, int height, const std::string& title);
+    // New constructor that accepts an existing GLFWwindow
+    Window(GLFWwindow* existingWindow, int width, int height);
+    
     ~Window();
     
     bool shouldClose() const;

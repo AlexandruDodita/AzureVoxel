@@ -1,6 +1,7 @@
 #include "../headers/block.h"
 #include <iostream>
 #include <glm/gtc/type_ptr.hpp> // For glm::value_ptr
+#include <filesystem>
 
 // Vertex shader source code
 const char* vertexShaderSource = R"(
@@ -43,6 +44,153 @@ const char* fragmentShaderSource = R"(
     }
 )";
 
+// Define static member
+GLuint Block::shaderProgram = 0;
+
+// Helper function for compiling/linking (can be static inside .cpp)
+// Moved from Block class to be a static helper here, or part of InitBlockShader
+static void checkShaderCompileErrors(unsigned int shader, std::string type) {
+    int success;
+    char infoLog[1024]; 
+    memset(infoLog, 0, sizeof(infoLog)); 
+
+    if (type != "PROGRAM") {
+        if (shader == 0) {
+            std::cerr << "ERROR::SHADER::CHECK_COMPILE_ERRORS Invalid shader ID 0 for type " << type << std::endl;
+            return;
+        }
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(shader, sizeof(infoLog) - 1, NULL, infoLog);
+            std::cerr << "ERROR::SHADER::" << type << "::COMPILATION_FAILED\n" << infoLog << std::endl;
+        }
+    } else { // "PROGRAM"
+        if (shader == 0) {
+            std::cerr << "ERROR::SHADER::CHECK_COMPILE_ERRORS Invalid program ID 0 for type PROGRAM" << std::endl;
+            return;
+        }
+        glGetProgramiv(shader, GL_LINK_STATUS, &success);
+        if (!success) {
+            glGetProgramInfoLog(shader, sizeof(infoLog) - 1, NULL, infoLog);
+            std::cerr << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << std::endl;
+        }
+    }
+}
+
+void Block::InitBlockShader() {
+    if (Block::shaderProgram != 0) {
+        // Already initialized
+        std::cout << "Block shader already initialized with program ID: " << Block::shaderProgram << std::endl;
+        return;
+    }
+    
+    std::cout << "Initializing block shader..." << std::endl;
+
+    // Force-clear any existing OpenGL errors before we start
+    while (glGetError() != GL_NO_ERROR) {}
+
+    // Create vertex shader
+    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    if (vertexShader == 0) {
+        std::cerr << "ERROR::SHADER::VERTEX::CREATE_FAILED OpenGL error: " << glGetError() << std::endl;
+        return;
+    }
+    
+    // Compile vertex shader
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+    
+    // Check for compilation errors
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vertexShader, sizeof(infoLog), NULL, infoLog);
+        std::cerr << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+        glDeleteShader(vertexShader);
+        return;
+    }
+
+    // Create fragment shader
+    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    if (fragmentShader == 0) {
+        std::cerr << "ERROR::SHADER::FRAGMENT::CREATE_FAILED OpenGL error: " << glGetError() << std::endl;
+        glDeleteShader(vertexShader);
+        return;
+    }
+    
+    // Compile fragment shader
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+    
+    // Check for compilation errors
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragmentShader, sizeof(infoLog), NULL, infoLog);
+        std::cerr << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        return;
+    }
+
+    // Create shader program
+    unsigned int program = glCreateProgram();
+    if (program == 0) {
+        std::cerr << "ERROR::SHADER::PROGRAM::CREATE_FAILED OpenGL error: " << glGetError() << std::endl;
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        return;
+    }
+    
+    // Attach shaders to program
+    glAttachShader(program, vertexShader);
+    glAttachShader(program, fragmentShader);
+    
+    // Link program
+    glLinkProgram(program);
+    
+    // Check for linking errors
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(program, sizeof(infoLog), NULL, infoLog);
+        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        glDeleteProgram(program);
+        return;
+    }
+    
+    // Delete the shader objects (they're now linked into the program)
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    
+    // Store the program handle in the static variable
+    Block::shaderProgram = program;
+    
+    std::cout << "Block shader successfully initialized with program ID: " << Block::shaderProgram << std::endl;
+    
+    // Validate the program and check for any OpenGL errors
+    glValidateProgram(Block::shaderProgram);
+    glGetProgramiv(Block::shaderProgram, GL_VALIDATE_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(Block::shaderProgram, sizeof(infoLog), NULL, infoLog);
+        std::cerr << "ERROR::SHADER::PROGRAM::VALIDATION_FAILED\n" << infoLog << std::endl;
+    }
+    
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        std::cerr << "OpenGL error after shader initialization: " << error << std::endl;
+    }
+}
+
+void Block::CleanupBlockShader() {
+    if (Block::shaderProgram != 0) {
+        glDeleteProgram(Block::shaderProgram);
+        Block::shaderProgram = 0;
+        std::cout << "Block shader program cleaned up." << std::endl;
+    }
+}
+
 Block::Block(const glm::vec3& position, const glm::vec3& color, float size)
     : position(position), color(color), size(size) 
       // Other members initialized in header (C++11 onwards)
@@ -64,9 +212,16 @@ Block::~Block() {
 }
 
 void Block::init() {
-    // Compile shader only if not already done (e.g., by representative block)
-    if (shaderProgram == 0) { 
-        shaderProgram = compileShader(vertexShaderSource, fragmentShaderSource);
+    // Shader compilation is now handled by static Block::InitBlockShader(), 
+    // called once from the main thread.
+    // This function now only handles VAO/VBO/EBO for individual block instances if needed.
+    // However, individual block VAOs might not be needed if only chunk surface meshes are rendered.
+    // For now, we keep the VAO setup for Block::render if it's ever called directly.
+
+    if (Block::shaderProgram == 0) {
+        std::cerr << "ERROR::BLOCK::INIT - Block::shaderProgram is 0. It should have been initialized by Block::InitBlockShader()." << std::endl;
+        // This indicates a logic error - InitBlockShader was not called or failed.
+        return; 
     }
 
     // Create buffers only if not already done
@@ -114,22 +269,21 @@ void Block::init() {
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &EBO);
-        // glGenBuffers(1, &texCoordVBO); // Tex coords can be interleaved
+        glGenBuffers(1, &texCoordVBO); // Tex coords will have their own VBO
 
         glBindVertexArray(VAO);
 
-        // VBO for positions (simplified for example)
+        // VBO for positions
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
 
-        // VBO for tex coords (simplified)
-        // If interleaved: Change vertex attrib pointer stride and offset
-        // glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO);
-        // glBufferData(GL_ARRAY_BUFFER, sizeof(texCoords), texCoords, GL_STATIC_DRAW);
-        // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-        // glEnableVertexAttribArray(1);
+        // VBO for tex coords
+        glBindBuffer(GL_ARRAY_BUFFER, texCoordVBO); // Bind the texCoordVBO
+        glBufferData(GL_ARRAY_BUFFER, sizeof(texCoords), texCoords, GL_STATIC_DRAW); // Upload texCoord data
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0); // Set attribute pointer for location 1
+        glEnableVertexAttribArray(1); // Enable attribute location 1
 
         // EBO
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
@@ -143,7 +297,7 @@ void Block::init() {
 // Renders this single block instance
 void Block::render(const glm::mat4& projection, const glm::mat4& view) {
     if (VAO == 0) init(); // Ensure initialized
-    if (VAO == 0 || shaderProgram == 0) return; // Initialization failed?
+    if (VAO == 0 || Block::shaderProgram == 0) return; // Initialization failed?
 
     useBlockShader();
     bindBlockTexture(); // Bind texture if it has one
@@ -161,15 +315,26 @@ void Block::render(const glm::mat4& projection, const glm::mat4& view) {
     Texture::unbind();
 }
 
-bool Block::loadTexture(const std::string& texturePath) {
-    // Texture loading now uses the member texture object
-    if (texture.loadFromFile(texturePath)) {
-        hasTexture = true;
-        return true;
+bool Block::loadTexture(const std::string& filepath) {
+    std::cout << "Loading texture from: " << filepath << std::endl;
+    
+    // Always check if the file exists first
+    if (!std::filesystem::exists(filepath)) {
+        std::cerr << "ERROR: Texture file does not exist: " << filepath << std::endl;
+        std::cerr << "Current working directory: " << std::filesystem::current_path() << std::endl;
+        return false;
     }
-    // std::cerr << "Using default block color instead of texture." << std::endl;
-    hasTexture = false;
-    return false;
+    
+    bool success = texture.loadFromFile(filepath);
+    hasTexture = success;
+    
+    if (success) {
+        std::cout << "Successfully loaded texture with ID: " << texture.getID() << std::endl;
+    } else {
+        std::cerr << "Failed to load texture from: " << filepath << std::endl;
+    }
+    
+    return success;
 }
 
 bool Block::loadTexture(const std::string& spritesheetPath, int atlasX, int atlasY, int atlasWidth, int atlasHeight) {
@@ -182,7 +347,7 @@ bool Block::loadTexture(const std::string& spritesheetPath, int atlasX, int atla
 void Block::shareTextureAndShaderFrom(const Block& other) {
     texture = other.texture; // Texture assignment operator handles sharing
     hasTexture = other.hasTextureState(); 
-    shaderProgram = other.getShaderProgram();
+    // shaderProgram = other.getShaderProgram(); // No longer needed to copy shaderProgram, it's static
 }
 
 void Block::move(float dx, float dy, float dz) {
@@ -205,8 +370,8 @@ glm::vec3 Block::getColor() const {
 
 // Activate the shader program for this block type
 void Block::useBlockShader() const {
-    if (shaderProgram != 0) {
-        glUseProgram(shaderProgram);
+    if (Block::shaderProgram != 0) {
+        glUseProgram(Block::shaderProgram);
     } // No warning here, expected that shader might be 0 if not initialized
 }
 
@@ -219,69 +384,22 @@ void Block::bindBlockTexture() const {
 
 // Set common shader uniforms (projection, view, model)
 void Block::setShaderUniforms(const glm::mat4& projection, const glm::mat4& view, const glm::mat4& model) const {
-     if (shaderProgram == 0) {
+     if (Block::shaderProgram == 0) {
          // This might happen if init() wasn't called or failed
          // std::cerr << "Warning: setShaderUniforms called with uninitialized shader." << std::endl;
          return;
      }
      
-     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
-     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+     glUniformMatrix4fv(glGetUniformLocation(Block::shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
+     glUniformMatrix4fv(glGetUniformLocation(Block::shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+     glUniformMatrix4fv(glGetUniformLocation(Block::shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
      // Texture related uniforms
-     glUniform1i(glGetUniformLocation(shaderProgram, "useTexture"), hasTexture);
+     glUniform1i(glGetUniformLocation(Block::shaderProgram, "useTexture"), hasTexture);
      if (hasTexture) {
-         glUniform1i(glGetUniformLocation(shaderProgram, "blockTexture"), 0); // Texture unit 0
+         glUniform1i(glGetUniformLocation(Block::shaderProgram, "blockTexture"), 0); // Texture unit 0
      } else {
          // Pass the block's color if not using texture
-         glUniform3fv(glGetUniformLocation(shaderProgram, "blockColor"), 1, glm::value_ptr(color));
+         glUniform3fv(glGetUniformLocation(Block::shaderProgram, "blockColor"), 1, glm::value_ptr(color));
      }
-}
-
-// Compiles shaders and links them into a program.
-unsigned int Block::compileShader(const char* vShaderSource, const char* fShaderSource) {
-    // ... (Shader compilation logic remains the same) ...
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vShaderSource, NULL);
-    glCompileShader(vertexShader);
-    // Check errors...
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-        glDeleteShader(vertexShader);
-        return 0;
-    }
-
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    // Check errors...
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-        glDeleteShader(vertexShader); // Clean up vertex shader too
-        glDeleteShader(fragmentShader);
-        return 0;
-    }
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
-    // Check errors...
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(program, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    return program;
 }

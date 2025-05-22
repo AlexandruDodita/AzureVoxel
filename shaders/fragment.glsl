@@ -9,10 +9,20 @@ uniform bool useTexture;
 
 void main() {
     if (useTexture) {
-        FragColor = texture(blockTexture, TexCoord);
+        vec4 texColor = texture(blockTexture, TexCoord);
+        // Make sure texture with alpha is handled correctly
+        if(texColor.a < 0.1)
+            discard;
+        FragColor = texColor;
     } else {
-        // Minecraft-like grass block color
-        vec3 grassColor = vec3(0.333, 0.549, 0.333);
-        FragColor = vec4(grassColor, 1.0);
+        // When no texture is available, use a solid color
+        // Different colors for debugging
+        vec3 color;
+        if (gl_FrontFacing) {
+            color = blockColor; // Use the provided block color
+        } else {
+            color = vec3(1.0, 0.0, 0.0); // Red for back faces (should not be visible normally)
+        }
+        FragColor = vec4(color, 1.0);
     }
 }

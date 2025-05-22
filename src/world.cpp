@@ -4,6 +4,7 @@
 #include <algorithm> // For std::sort
 #include <sys/stat.h> // For mkdir
 #include <set> // For std::set in update method
+#include <chrono> // For std::chrono
 
 const std::string CHUNK_DATA_DIR = "chunk_data";
 
@@ -59,18 +60,40 @@ void World::workerThreadFunction() {
 }
 
 void World::addTask(const std::function<void()>& task) {
-    {
-        std::lock_guard<std::mutex> lock(queueMutex_);
-        taskQueue_.push(task);
-    }
+    std::unique_lock<std::mutex> lock(queueMutex_);
+    taskQueue_.push(task);
+    lock.unlock();
     queueCondition_.notify_one();
+}
+
+void World::addMainThreadTask(const std::function<void()>& task) {
+    std::unique_lock<std::mutex> lock(mainThreadTasksMutex_);
+    mainThreadTasks_.push(task);
+}
+
+void World::processMainThreadTasks() {
+    std::unique_lock<std::mutex> lock(mainThreadTasksMutex_);
+    while (!mainThreadTasks_.empty()) {
+        std::function<void()> task = mainThreadTasks_.front();
+        mainThreadTasks_.pop();
+        lock.unlock(); // Unlock before executing the task
+        task();        // Execute the task
+        lock.lock();   // Re-lock to check the loop condition
+    }
 }
 
 void World::update(const Camera& camera) {
     glm::ivec2 playerChunkPos = worldToChunkCoords(camera.getPosition());
     std::set<glm::ivec2, IVec2Compare> activeChunkCoords;
     
-    // Determine new active zone
+    // Debug the player's chunk position
+    static glm::ivec2 lastPlayerChunkPos(-999, -999);
+    if (playerChunkPos.x != lastPlayerChunkPos.x || playerChunkPos.y != lastPlayerChunkPos.y) {
+        std::cout << "Player moved to chunk: (" << playerChunkPos.x << ", " << playerChunkPos.y << ")" << std::endl;
+        lastPlayerChunkPos = playerChunkPos;
+    }
+    
+    // Determine new active zone based on render distance
     for (int x = playerChunkPos.x - renderDistance; x <= playerChunkPos.x + renderDistance; ++x) {
         for (int z = playerChunkPos.y - renderDistance; z <= playerChunkPos.y + renderDistance; ++z) {
             glm::ivec2 currentChunkKey(x, z);
@@ -78,81 +101,112 @@ void World::update(const Camera& camera) {
         }
     }
     
-    // First, prioritize chunks closest to the player
-    std::vector<glm::ivec2> chunkKeys;
+    // Find chunks that need to be loaded
+    std::vector<glm::ivec2> chunksToLoad;
     for (const auto& key : activeChunkCoords) {
         if (chunks.find(key) == chunks.end()) {
-            chunkKeys.push_back(key);
+            chunksToLoad.push_back(key);
         }
     }
     
-    // Sort chunks by distance to player for prioritized loading
-    std::sort(chunkKeys.begin(), chunkKeys.end(), 
+    // Sort chunks by distance to player for priority loading
+    std::sort(chunksToLoad.begin(), chunksToLoad.end(), 
         [playerChunkPos](const glm::ivec2& a, const glm::ivec2& b) {
             float distA = glm::distance(glm::vec2(playerChunkPos), glm::vec2(a));
             float distB = glm::distance(glm::vec2(playerChunkPos), glm::vec2(b));
             return distA < distB;
         });
     
-    // Process the sorted chunks
-    for (const auto& key : chunkKeys) {
-        // First check if it was already added by another thread
-        if (chunks.find(key) != chunks.end()) {
-            continue;
+    // Process up to 5 chunks at once (balance between performance and loading speed)
+    const int maxChunksToProcessPerFrame = 5;
+    int chunksProcessed = 0;
+    
+    // Load new chunks that are in the active zone but not yet loaded
+    for (const auto& key : chunksToLoad) {
+        if (chunksProcessed >= maxChunksToProcessPerFrame) break;
+        
+        // If chunk doesn't exist at all, create it
+        if (chunks.find(key) == chunks.end()) {
+            // Create chunk at the appropriate world position
+            glm::vec3 chunkPos(key.x * CHUNK_SIZE_X, 0, key.y * CHUNK_SIZE_Z);
+            auto chunk = std::make_shared<Chunk>(chunkPos);
+            chunks[key] = chunk;
+            
+            // Queue the initialization in the background
+            // This will load from file or generate terrain as needed
+            addTask([this, chunk, key]() {
+                chunk->ensureInitialized(this, worldSeed_, worldDataPath_);
+            });
+            
+            chunksProcessed++;
         }
-        
-        glm::vec3 chunkWorldPos(key.x * chunkSize, 0.0f, key.y * chunkSize);
-        auto newChunk = std::make_shared<Chunk>(chunkWorldPos);
-        chunks[key] = newChunk; // Add placeholder to map immediately
-        
-        // Queue initialization for background processing
-        addTask([this, world=this, key, newChunk]() {
-            newChunk->ensureInitialized(world, worldSeed_, worldDataPath_);
-        });
     }
-
-    // Unload chunks outside the active zone
-    for (auto it = chunks.begin(); it != chunks.end(); /* no increment */) {
-        if (activeChunkCoords.find(it->first) == activeChunkCoords.end()) {
-            // Chunk is outside active zone, save and unload
-            it->second->saveToFile(worldDataPath_); 
-            it = chunks.erase(it); // Erase and get iterator to next element
-        } else {
-            ++it;
+    
+    // Remove chunks that are outside the active zone
+    std::vector<glm::ivec2> chunksToRemove;
+    for (const auto& [pos, chunk] : chunks) {
+        if (activeChunkCoords.find(pos) == activeChunkCoords.end()) {
+            chunksToRemove.push_back(pos);
         }
+    }
+    
+    // Unload chunks outside active zone
+    for (const auto& pos : chunksToRemove) {
+        if (chunks.count(pos) > 0) {
+            // Save the chunk before removing it
+            chunks[pos]->saveToFile(worldDataPath_);
+            chunks.erase(pos);
+            std::cout << "Unloaded chunk at " << pos.x << "," << pos.y << std::endl;
+        }
+    }
+    
+    // Show initialization progress
+    int initializedCount = 0;
+    for (const auto& [pos, chunk] : chunks) {
+        if (chunk->isInitialized()) {
+            initializedCount++;
+        }
+    }
+    
+    static int lastReportedCount = -1;
+    if (initializedCount != lastReportedCount) {
+        std::cout << "Chunks initialized: " << initializedCount << "/" << chunks.size() 
+                  << " (" << (chunks.size() > 0 ? (initializedCount * 100 / chunks.size()) : 0) << "%)" << std::endl;
+        lastReportedCount = initializedCount;
     }
 }
 
 void World::render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera) {
-    // Calculate which chunk the camera is in (primarily for renderAllBlocks heuristic)
+    // Calculate which chunk the camera is in
     glm::ivec2 camChunkPos = worldToChunkCoords(camera.getPosition());
     
     int renderedChunks = 0;
+    int totalChunks = chunks.size();
     
+    // First, render all chunks
     for (auto const& [pos, chunk] : chunks) {
         // Skip chunks that aren't initialized yet (still being processed by worker thread)
         if (!chunk->isInitialized()) {
             continue;
         }
-            
-        bool isCurrentChunk = (pos == camChunkPos);
-            
-        if (isCurrentChunk) {
-            chunk->renderAllBlocks(projection, view); // Potentially for closer detail or debugging
-        } else {
-            chunk->renderSurface(projection, view);
-        }
+        
+        // All chunks use the optimized surface rendering
+        chunk->renderSurface(projection, view);
         renderedChunks++;
     }
     
-    // Optional debug info
-    static int lastInfoTime = 0;
-    int currentTime = static_cast<int>(glfwGetTime());
-    if (currentTime > lastInfoTime) {
-        lastInfoTime = currentTime;
-        // Uncomment for periodic debugging info if needed
-        // std::cout << "Rendered " << renderedChunks << " of " << chunks.size() 
-        //           << " chunks. Player at: (" << camChunkPos.x << "," << camChunkPos.y << ")" << std::endl;
+    // Output render statistics periodically
+    static int lastFrameCount = 0;
+    static auto lastOutputTime = std::chrono::high_resolution_clock::now();
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastOutputTime).count();
+    
+    // Update once per second
+    if (elapsedTime > 1000) {
+        std::cout << "\nRendering " << renderedChunks << "/" << totalChunks << " chunks"
+                  << " from camera at chunk: (" << camChunkPos.x << ", " << camChunkPos.y << ")" << std::endl;
+        lastOutputTime = currentTime;
+        lastFrameCount = 0;
     }
 }
 

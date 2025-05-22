@@ -51,6 +51,7 @@ This file serves as the main entry point and orchestrator for the AzureVoxel app
 *   **`main()`** - This is the primary function where the application starts.
     *   Initializes a `Window` object with specified dimensions and title.
     *   Initializes GLEW for OpenGL extension loading. If initialization fails, it prints an error and exits.
+    *   Calls `Block::InitBlockShader()` to compile and link the shared shader program for blocks. This must be done after GLEW initialization and before any `Block` objects attempt to use the shader.
     *   Prints the current OpenGL version.
     *   Enables depth testing for correct 3D rendering.
     *   Creates a `Camera` object, positioning it for a good view of the terrain and setting mouse sensitivity.
@@ -68,7 +69,7 @@ This file serves as the main entry point and orchestrator for the AzureVoxel app
         *   Renders the currently loaded and active chunks using `world.render()`, passing the projection, view matrices, and camera object.
         *   Prints the current camera position and FPS to the console.
         *   Swaps the front and back buffers of the window (`window.swapBuffers()`) to display the rendered frame.
-    *   After the loop ends (window is closed), it prints a newline and returns 0, indicating successful execution.
+    *   After the loop ends (window is closed), calls `Block::CleanupBlockShader()` to delete the shared block shader program, then prints a newline and returns 0, indicating successful execution.
 
 ---
 
@@ -162,32 +163,32 @@ This file provides an overview of the AzureVoxel project. It includes a brief de
 ---
 
 ### `headers/block.h` in `headers/`
-This header file defines the `Block` class, which represents a single voxel or cube in the 3D world. It manages the block\'s properties such as position, color, size, and texture, as well as its rendering through OpenGL.
+This header file defines the `Block` class, which represents a single voxel or cube in the 3D world. It manages the block\'s properties such as position, color, size, and texture, as well as its rendering through OpenGL. It now uses a static shader program initialized once.
 
-*   **`Block`** - Represents a single cube in the game world. It handles its own rendering setup (VAO, VBO, EBO, shaders) and can be textured.
+*   **`Block`** - Represents a single cube in the game world.
     *   **Private Members:**
-        *   `VAO, VBO, EBO, texCoordVBO` (GLuint): OpenGL identifiers for Vertex Array Object, Vertex Buffer Object, Element Buffer Object, and texture coordinate VBO respectively. Used for rendering.
-        *   `shaderProgram` (GLuint): Identifier for the compiled and linked GLSL shader program used to render the block.
+        *   `VAO, VBO, EBO, texCoordVBO` (GLuint): OpenGL identifiers for vertex array data specific to an individual block instance (if `Block::render` is used).
         *   `position` (glm::vec3): The 3D coordinates of the block\'s center.
-        *   `color` (glm::vec3): The base color of the block (used if no texture is applied).
+        *   `color` (glm::vec3): The base color of the block.
         *   `size` (float): The edge length of the cube.
         *   `texture` (Texture): A `Texture` object associated with this block.
         *   `hasTexture` (bool): Flag indicating whether the block has a texture loaded.
-        *   `speed` (float): A variable presumably intended for movement, though not actively used for block movement in typical voxel engines.
-    *   **Private Methods:**
-        *   `compileShader(const char* vertexShaderSource, const char* fragmentShaderSource)` (unsigned int): A utility function to compile vertex and fragment shaders and link them into a shader program. Returns the shader program ID.
+        *   `speed` (float): Movement speed (not actively used).
+    *   **Public Static Members:**
+        *   `shaderProgram` (GLuint): Static identifier for the shared, compiled GLSL shader program used by all blocks. Initialized to 0.
+    *   **Public Static Methods:**
+        *   `InitBlockShader()`: Compiles and links the global vertex and fragment shaders for blocks. Stores the resulting program ID in `Block::shaderProgram`. Must be called once from the main thread after OpenGL context and GLEW are ready.
+        *   `CleanupBlockShader()`: Deletes the `Block::shaderProgram`. Must be called once from the main thread before application exit.
     *   **Public Methods:**
-        *   `Block(const glm::vec3& position, const glm::vec3& color, float size)` - Constructor that initializes the block with a given position, color, and size.
-        *   `~Block()` - Destructor, responsible for cleaning up OpenGL resources (VAO, VBO, EBO, shaderProgram if owned).
-        *   `init()` - Initializes the OpenGL buffers (VAO, VBO, EBO) for the block\'s geometry and texture coordinates. It also compiles and links the shaders if `shaderProgram` is 0.
-        *   `render(const glm::mat4& projection, const glm::mat4& view)` - Renders the individual block. It sets up the model matrix based on the block\'s position and size, uses the block\'s shader, binds its texture (if any), sets shader uniforms (projection, view, model matrices), binds the VAO, and draws the cube using `glDrawElements`.
-        *   `move(float dx, float dy, float dz)` - Modifies the block\'s position by the given deltas.
-        *   `setPosition(const glm::vec3& newPosition)` - Sets the block\'s position to a new specified position.
-        *   `loadTexture(const std::string& texturePath)` (bool) - Loads a texture from the given file path using the `Texture` object. Sets `hasTexture` to true on success. Returns true if texture loading was successful, false otherwise.
+        *   `Block(const glm::vec3& position, const glm::vec3& color, float size)` - Constructor.
+        *   `~Block()` - Destructor (cleans up VAO, VBO, EBO, texCoordVBO if created for this instance).
+        *   `init()` - Initializes the OpenGL buffers (VAO, VBO, EBO, texCoordVBO) for an individual block's geometry if `Block::render()` is to be used. It no longer compiles shaders; it assumes `Block::InitBlockShader()` has been called. Prints an error if `Block::shaderProgram` is 0.
+        *   `render(const glm::mat4& projection, const glm::mat4& view)` - Renders the individual block using its own VAO and the static `Block::shaderProgram`.
+        *   (Other methods like `move`, `setPosition`, `loadTexture`, `getPosition`, `getColor`, `hasTextureState`, `getTextureID`, `useBlockShader`, `bindBlockTexture`, `setShaderUniforms` remain largely the same, but `useBlockShader` and `setShaderUniforms` now refer to `Block::shaderProgram`.)
         *   `shareTextureAndShaderFrom(const Block& other)` - Allows this block to share the texture and shader program from another `Block` object. This is an optimization to avoid redundant texture loading and shader compilation for identical blocks.
         *   `getPosition() const` (glm::vec3) - Returns the current 3D position of the block.
         *   `getColor() const` (glm::vec3) - Returns the base color of the block.
-        *   `getShaderProgram() const` (GLuint) - Returns the ID of the shader program used by this block.
+        *   `getShaderProgram() const` (GLuint) - Returns the static `Block::shaderProgram`.
         *   `hasTextureState() const` (bool) - Returns true if the block has a texture, false otherwise. (Renamed to avoid conflict with `Texture` class methods).
         *   `getTextureID() const` (GLuint) - Returns the OpenGL ID of the block\'s texture.
         *   `useBlockShader() const` - Activates the block\'s shader program using `glUseProgram`.
@@ -387,77 +388,35 @@ This header file defines the `World` class, which manages the overall game envir
 ---
 
 ### `src/block.cpp` in `src/`
-This file provides the implementation for the `Block` class declared in `headers/block.h`. It includes the definitions for the constructor, destructor, methods for initialization (OpenGL buffers, shaders), rendering, texture loading, movement, and shader management. It also contains the GLSL source code for the vertex and fragment shaders used to render blocks.
+This file provides the implementation for the `Block` class. It defines the static `shaderProgram` and implements the static `InitBlockShader` and `CleanupBlockShader` methods. The individual `Block::init` method now only sets up VAOs/VBOs for direct block rendering and relies on the static shader.
 
-*   **Global Constants (Shader Source Code):**
-    *   `vertexShaderSource` (const char*): A C-style string containing the GLSL source code for the vertex shader. This shader takes vertex position and texture coordinates as input, transforms the position using model, view, and projection matrices, and passes the texture coordinates to the fragment shader.
-    *   `fragmentShaderSource` (const char*): A C-style string containing the GLSL source code for the fragment shader. This shader receives texture coordinates from the vertex shader. If `useTexture` uniform is true, it samples color from `blockTexture`. Otherwise, it uses the `blockColor` uniform.
-*   **`Block`** - (Implementation of methods)
-    *   **Constructor `Block(const glm::vec3& position, const glm::vec3& color, float size)`:**
-        *   Initializes `position`, `color`, and `size` members with the provided arguments. Other members like OpenGL handles and flags are initialized in the header or by default.
-    *   **Destructor `~Block()`:**
-        *   Cleans up OpenGL resources (VAO, VBO, EBO, texCoordVBO) by calling `glDeleteVertexArrays` and `glDeleteBuffers` if these objects were generated (i.e., their IDs are not 0). It notes that shader programs are potentially shared and are not deleted here to avoid issues; shader lifetime should be managed carefully (e.g., by a central shader manager or through the `Shader` class if blocks use individual `Shader` objects).
-    *   **`init()`:**
-        *   Compiles and links the shader program using `compileShader()` if `shaderProgram` is 0 (meaning it hasn\'t been compiled yet for this block type or a representative block).
-        *   If `VAO` is 0 (not yet created):
-            *   Defines vertex data (positions) for a cube (currently only front and back faces are fully defined in the example `vertices` array, this VAO seems intended for individual block rendering rather than chunk meshing).
-            *   Defines texture coordinates (also only for front and back faces in the example `texCoords` array).
-            *   Defines indices for drawing the cube faces (again, only front and back).
-            *   Generates VAO, VBO, EBO using `glGenVertexArrays`, `glGenBuffers`.
-            *   Binds the VAO.
-            *   Configures the VBO for vertex positions: binds it, transfers data with `glBufferData`, sets vertex attribute pointer for `layout (location = 0)`.
-            *   (Note: Texture coordinate VBO (`texCoordVBO`) setup is commented out or simplified; in a full setup, texture coordinates would also be uploaded and configured with a vertex attribute pointer for `layout (location = 1)`.)
-            *   Configures the EBO: binds it, transfers index data with `glBufferData`.
-            *   Unbinds VBO and VAO.
-    *   **`render(const glm::mat4& projection, const glm::mat4& view)`:**
-        *   Calls `init()` if the block\'s VAO is 0 to ensure OpenGL resources are set up.
-        *   Returns if `VAO` or `shaderProgram` is 0 (indicating initialization might have failed).
-        *   Activates the block\'s shader program using `useBlockShader()`.
-        *   Binds the block\'s texture (if any) using `bindBlockTexture()`.
-        *   Calculates the `model` matrix by translating an identity matrix to the block\'s `position`.
-        *   Sets shader uniforms (projection, view, model matrices, and texture/color info) using `setShaderUniforms()`.
-        *   Binds the block\'s `VAO`.
-        *   Draws the block using `glDrawElements`. The current call `glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0)` suggests it draws 12 indices (4 triangles, likely 2 faces), which matches the simplified vertex data in `init()`.
-        *   Unbinds the `VAO` and then calls `Texture::unbind()` to unbind the texture from texture unit 0.
-    *   **`loadTexture(const std::string& texturePath)` (bool):**
-        *   Calls `texture.loadFromFile(texturePath)` on its member `Texture` object.
-        *   If loading is successful, sets `hasTexture` to true and returns true.
-        *   Otherwise, sets `hasTexture` to false and returns false.
-    *   **`shareTextureAndShaderFrom(const Block& other)`:**
-        *   Copies the `Texture` object from `other` (the `Texture` class\'s assignment operator should handle the sharing logic, e.g., by incrementing a reference count or setting `isShared` flags).
-        *   Copies the `hasTexture` state from `other.hasTextureState()`.
-        *   Copies the `shaderProgram` ID from `other.getShaderProgram()`. This allows multiple blocks of the same type to share a single compiled shader program and loaded texture.
-    *   **`move(float dx, float dy, float dz)`:**
-        *   Updates the block\'s `position` by adding `dx * speed`, `dy * speed`, and `dz * speed` to its components.
-    *   **`setPosition(const glm::vec3& newPosition)`:**
-        *   Sets the block\'s `position` to `newPosition`.
-    *   **`getPosition() const` (glm::vec3):**
-        *   Returns the block\'s current `position`.
-    *   **`getColor() const` (glm::vec3):**
-        *   Returns the block\'s base `color`.
-    *   **`useBlockShader() const`:**
-        *   If `shaderProgram` is not 0, it calls `glUseProgram(shaderProgram)` to activate it.
-    *   **`bindBlockTexture() const`:**
-        *   If `hasTexture` is true, it calls `texture.bind(0)` to bind the block\'s texture to texture unit 0.
-    *   **`setShaderUniforms(const glm::mat4& projection, const glm::mat4& view, const glm::mat4& model) const`:**
-        *   Returns if `shaderProgram` is 0.
-        *   Sets the "model", "view", and "projection" matrix uniforms in the shader program using `glUniformMatrix4fv` and `glGetUniformLocation`.
-        *   Sets the "useTexture" boolean uniform.
-        *   If `hasTexture` is true, sets the "blockTexture" sampler uniform to 0 (indicating texture unit 0).
-        *   If `hasTexture` is false, sets the "blockColor" vec3 uniform to the block\'s `color` member.
-    *   **`compileShader(const char* vShaderSource, const char* fShaderSource)` (unsigned int):**
-        *   Creates a vertex shader object (`glCreateShader(GL_VERTEX_SHADER)`).
-        *   Attaches the `vShaderSource` to it (`glShaderSource`) and compiles it (`glCompileShader`).
-        *   Checks for compilation errors using `glGetShaderiv` and `glGetShaderInfoLog`. If errors occur, prints them to `std::cerr`, deletes the shader, and returns 0.
-        *   Creates a fragment shader object (`glCreateShader(GL_FRAGMENT_SHADER)`).
-        *   Attaches the `fShaderSource` to it and compiles it.
-        *   Checks for compilation errors for the fragment shader. If errors occur, prints them, deletes both shaders, and returns 0.
-        *   Creates a shader program object (`glCreateProgram()`).
-        *   Attaches both compiled vertex and fragment shaders to the program (`glAttachShader`).
-        *   Links the program (`glLinkProgram()`).
-        *   Checks for linking errors using `glGetProgramiv` and `glGetProgramInfoLog`. If errors occur, prints them, deletes the program and shaders, and returns 0.
-        *   Detaches the shaders from the program (`glDetachShader`) and deletes the individual shader objects (`glDeleteShader`) as they are now linked into the program.
-        *   Returns the ID of the linked shader program.
+*   **Global Constants (Shader Source Code):** `vertexShaderSource`, `fragmentShaderSource` (As previously documented)
+*   **Static Member Definition:**
+    *   `GLuint Block::shaderProgram = 0;`
+*   **Static Helper Function (within .cpp):**
+    *   `checkShaderCompileErrors(unsigned int shader_id, std::string type)`: Local static helper to check compile/link status and print errors. Used by `InitBlockShader`.
+*   **`Block::InitBlockShader()`:**
+    *   If `Block::shaderProgram` is not 0, returns (already initialized).
+    *   Creates vertex shader, sets source, compiles. Calls `checkShaderCompileErrors`.
+    *   Creates fragment shader, sets source, compiles. Calls `checkShaderCompileErrors`.
+    *   Creates shader program, attaches shaders, links program. Calls `checkShaderCompileErrors`.
+    *   If linking successful, sets `Block::shaderProgram` to the new program ID. Otherwise, cleans up created shaders/program.
+    *   Deletes individual vertex and fragment shaders after successful linking.
+    *   Prints a success message with the shader program ID.
+*   **`Block::CleanupBlockShader()`:**
+    *   If `Block::shaderProgram` is not 0, calls `glDeleteProgram` and sets `shaderProgram` to 0. Prints a cleanup message.
+*   **`Block`** - (Implementation of other methods)
+    *   **Constructor `Block(...)`**: (As previously documented)
+    *   **Destructor `~Block()`**: (As previously documented)
+    *   **`init()`**: 
+        *   No longer compiles shaders.
+        *   Checks if `Block::shaderProgram` is 0 and prints an error if so (indicates `InitBlockShader` was missed or failed).
+        *   Proceeds with VAO/VBO/EBO/texCoordVBO setup for individual block rendering as before.
+    *   **`render(...)`**: Uses `Block::shaderProgram`.
+    *   **`shareTextureAndShaderFrom(const Block& other)`**: No longer copies `shaderProgram` from `other`.
+    *   **`useBlockShader() const`**: Uses `Block::shaderProgram`.
+    *   **`setShaderUniforms(...) const`**: Uses `Block::shaderProgram`.
+    *   The non-static `compileShader` and `checkCompileErrors` member functions have been removed (their logic is now in `InitBlockShader` and the static helper `checkShaderCompileErrors`).
 
 ---
 
@@ -515,32 +474,47 @@ This file implements the `Camera` class methods declared in `headers/camera.h`. 
 ### `src/chunk.cpp` in `src/`
 This file implements the `Chunk` class, which represents a segment of the game world composed of many blocks. It handles terrain generation within the chunk, mesh building for efficient rendering of visible block faces, and saving/loading chunk data to/from files.
 
-*   **`faceVertices` (const glm::vec3[][4])**: A constant array defining the vertex positions for each of the 6 faces of a cube, relative to the block's center.
-*   **`texCoords` (const glm::vec2[])**: A constant array defining the standard texture coordinates for a square face.
-*   **`Chunk(const glm::vec3& position)` (Constructor)**: Initializes a chunk at a given world `position`. Sets `needsRebuild` to true and `isInitialized_` to false. It also resizes the `blocks` 3D vector to the chunk dimensions, initially filled with `nullptr`.
-*   **`~Chunk()` (Destructor)**: Calls `cleanupMesh()` to release OpenGL resources associated with the chunk's surface mesh.
-*   **`init(const World* world)`**: This method's role has been reduced. The primary initialization is now handled by `ensureInitialized()`. This is kept for minimal setup if needed in the future.
-*   **`simpleNoise(int x, int y, int z, int seed)` (float)**: A noise function that generates a pseudo-random float value based on 3D coordinates and a seed for reproducible terrain.
-*   **`generateTerrain(int seed)`**: Creates an optimized terrain using seed-based noise.
-    *   It uses shared representative blocks for stone and grass to reduce texture loading and shader compilation.
-    *   It pre-calculates the height map for all columns to improve memory locality.
-    *   It creates blocks efficiently by minimizing texture loading, using shared resources, and avoiding unnecessary block creation.
-*   **`buildSurfaceMesh(const World* world)`**: Builds an optimized mesh showing only visible block faces.
-    *   It pre-reserves memory for the mesh data to avoid reallocations.
-    *   It uses optimized iteration order for better memory locality.
-    *   It checks if neighbors are within the same chunk first (faster than world queries).
-    *   It only adds vertices and indices for visible faces.
-*   **`cleanupMesh()`**: Releases OpenGL resources and efficiently clears the mesh data to free memory.
-*   **`ensureInitialized(const World* world, int seed, const std::string& worldDataPath)`**: The primary method for initializing a chunk.
-    *   It times the initialization process for performance monitoring.
-    *   It first attempts to load from a file, then generates new terrain if needed.
-    *   It builds the mesh and marks the chunk as initialized.
-*   **`saveToFile/loadFromFile`**: Optimized methods for serializing and deserializing chunk data.
-    *   They use buffer-based I/O for better performance.
-    *   They share texture resources among blocks to reduce memory usage.
-*   **`isInitialized() const` (bool)**: Returns the state of the `isInitialized_` flag, indicating whether `ensureInitialized()` has been successfully run for this chunk.
-*   **Private Members (Conceptual, based on .cpp changes):**
-    *   `isInitialized_` (bool): Flag to track if `ensureInitialized` has been called and completed for this chunk. Initialized to `false` in the constructor.
+*   **Global Constants:** `faceVertices`, `texCoords` (As previously documented)
+*   **`Chunk(const glm::vec3& position)` (Constructor)**: (As previously documented)
+*   **`~Chunk()` (Destructor)**: (As previously documented)
+*   **`init(const World* world)`**: (As previously documented - role reduced)
+*   **`simpleNoise(...)` (float)**: (As previously documented)
+*   **`generateTerrain(int seed)`**: (As previously documented - uses representative blocks, pre-calculates heightmap)
+*   **`buildSurfaceMesh(const World* world)`**: Builds an optimized mesh for visible block faces.
+    *   (As previously documented regarding reserving memory, iteration order, neighbor checking)
+    *   Vertex data added to `meshVertices` includes 3 floats for position and 2 floats for texture coordinates (total 5 floats per vertex).
+    *   If `meshVertices` is empty after checking all blocks, returns early.
+    *   Creates OpenGL buffers (`surfaceMesh.VAO`, `VBO`, `EBO`).
+    *   Configures vertex attribute pointers for `surfaceMesh.VAO`:
+        *   Position: `layout (location = 0)`, 3 floats, stride `5 * sizeof(float)`, offset 0.
+        *   Texture Coords: `layout (location =1)`, 2 floats, stride `5 * sizeof(float)`, offset `3 * sizeof(float)`.
+    *   Sets `surfaceMesh.indexCount` and `needsRebuild = false`.
+*   **`renderSurface(const glm::mat4& projection, const glm::mat4& view)`**: Renders the pre-built surface mesh.
+    *   Returns if `surfaceMesh.indexCount` or `VAO` is 0.
+    *   Uses the static `Block::shaderProgram`. If the program ID is 0, prints an error and returns.
+    *   Sets model (translation to chunk position), view, and projection matrix uniforms in the shader.
+    *   Finds a `representativeBlock` from the chunk.
+    *   If a `representativeBlock` is found and has a texture:
+        *   Sets `useTexture` uniform to true.
+        *   Sets `blockTexture` uniform to texture unit 0.
+        *   Binds the `representativeBlock`'s texture.
+    *   Else (no textured block or representative block has no texture):
+        *   Sets `useTexture` uniform to false (shader will use fallback color).
+    *   Binds the `surfaceMesh.VAO`.
+    *   Draws using `glDrawElements` with `surfaceMesh.indexCount`.
+    *   Unbinds VAO and texture (if one was bound).
+*   **`renderAllBlocks(...)`**: (As previously documented)
+*   **`hasBlockAtLocal(...)` (bool)**: (As previously documented)
+*   **`getBlockAtLocal(...)` (std::shared_ptr<Block>)**: (As previously documented)
+*   **`setBlockAtLocal(...)`**: (As previously documented)
+*   **`removeBlockAtLocal(...)`**: (As previously documented)
+*   **`cleanupMesh()`**: (As previously documented - also clears and swaps `meshVertices` and `meshIndices` vectors)
+*   **`getPosition() const` (glm::vec3)**: (As previously documented)
+*   **`getChunkFileName() const` (std::string)**: (As previously documented)
+*   **`saveToFile(...)` (bool)**: (As previously documented - optimized buffer I/O)
+*   **`loadFromFile(...)` (bool)**: (As previously documented - optimized buffer I/O, uses representative blocks for textures)
+*   **`ensureInitialized(...)`**: (As previously documented - includes timing, reduced console output)
+*   **`isInitialized() const` (bool)**: (As previously documented)
 
 ---
 
@@ -662,7 +636,7 @@ This file implements the `Window` class methods, providing the functionality for
     *   **`isKeyPressed(int key) const` (bool):**
         *   Returns `glfwGetKey(window, key) == GLFW_PRESS`.
     *   **`enableMouseCapture(bool enable)`:**
-        *   Contains commented-out code for enabling/disabling mouse cursor capture using `glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED/NORMAL)`.
+        *   Contains commented-out code for enabling/disabling mouse cursor capture using `glfwSetInputMode(window, GLFW_CURSOR_DISABLED/NORMAL)`.
         *   A disclaimer notes this functionality is currently disabled due to potential issues with window managers.
     *   **`getMouseOffset(double& x, double& y)`:**
         *   Assigns `xOffset` to `x` and `yOffset` to `y`.
@@ -697,41 +671,23 @@ This file implements the `Window` class methods, providing the functionality for
 ---
 
 ### `src/world.cpp` in `src/`
-This file implements the `World` class methods. It manages chunk loading, unloading, rendering, and provides access to blocks within the world. It uses a hardcoded directory `chunk_data` for saving and loading chunk files.
+This file implements the `World` class methods. It manages chunk loading, unloading, rendering, and provides access to blocks within the world. It uses a background worker thread for chunk processing.
 
-*   **`CHUNK_DATA_DIR` (const std::string)**: Defines the directory name ("chunk_data") for storing chunk files.
-*   **`World(int renderDistance)` (Constructor)**:
-    *   Initializes `renderDistance`.
-    *   Creates the `CHUNK_DATA_DIR` directory if it doesn't already exist (using `mkdir` for Unix-like systems).
-    *   Initializes `worldSeed_` to a hardcoded integer value (e.g., 12345).
-    *   Initializes `worldDataPath_` to the value of `CHUNK_DATA_DIR`.
-*   **`~World()` (Destructor)**:
-    *   Calls `saveAllChunks()` to ensure all data is persisted.
-*   **`update(const Camera& camera)`**:
-    *   Calculates the camera's current chunk coordinates (`playerChunkPos`).
-    *   Defines a `std::set` (`activeChunkCoords`) to keep track of chunks that should be loaded based on `renderDistance` around `playerChunkPos`.
-    *   Iterates from `playerChunkPos.x - renderDistance` to `playerChunkPos.x + renderDistance` (and similarly for z/y component of `playerChunkPos` which represents the chunk's Z coordinate):
-        *   For each `currentChunkKey` in this range, adds it to `activeChunkCoords`.
-        *   If `chunks.find(currentChunkKey)` is not found (chunk is not loaded):
-            *   A new `Chunk` is created at the corresponding world position.
-            *   `newChunk->ensureInitialized(this, worldSeed_, worldDataPath_)` is called. This method encapsulates the logic: it attempts to load the chunk from `worldDataPath_`; if that fails, it generates new terrain using `worldSeed_`, saves the newly generated chunk to `worldDataPath_`, and builds its surface mesh.
-            *   The `newChunk` is then added to the `chunks` map.
-    *   Iterates through the `chunks` map to find chunks to unload:
-        *   If a chunk's key is not found in `activeChunkCoords`, it means it's outside the render distance.
-        *   The chunk is saved using `it->second->saveToFile(worldDataPath_)`.
-        *   The chunk is then removed from the `chunks` map using `chunks.erase(it)`.
-*   **`render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)`**:
-    *   Determines the camera's current chunk coordinates (`camChunkPos`).
-    *   Iterates through all chunks in the `chunks` map:
-        *   The check `chunk->needsMeshRebuild()` and the call to `chunk->buildSurfaceMesh(this)` have been removed from this method. Mesh building is now handled within `chunk->ensureInitialized()`, which is called during the `World::update()` phase.
-        *   It checks if the current iterating chunk (`pos`) is the same as `camChunkPos`.
-        *   If it is the current chunk, `chunk->renderAllBlocks()` might be called (potentially for different rendering effects or higher detail on the player's current chunk).
-        *   Otherwise, `chunk->renderSurface()` is called for efficient rendering of other chunks.
-*   **`getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>)**: (Implementation details as per header description).
-*   **`worldToChunkCoords(const glm::vec3& worldPos) const` (glm::ivec2)**: (Implementation details as per header description).
-*   **`getBlockAtWorldPos(int worldX, int worldY, int worldZ) const` (std::shared_ptr<Block>)**: (Implementation details as per header description).
-*   **`saveAllChunks() const`**:
-    *   Iterates through all chunks in the `chunks` map and calls `chunk->saveToFile(worldDataPath_)` for each valid chunk.
+*   **`CHUNK_DATA_DIR` (const std::string)**: (As previously documented)
+*   **`World(int renderDistance)` (Constructor)**: Initializes `worldSeed_`, `worldDataPath_`, starts `workerThread_`. (As previously documented)
+*   **`~World()` (Destructor)**: Signals worker thread, joins it, saves chunks. (As previously documented)
+*   **`workerThreadFunction()`**: (As previously documented - waits on condition variable, executes tasks)
+*   **`addTask(...)`**: (As previously documented - locks mutex, pushes task, notifies)
+*   **`update(const Camera& camera)`**: (As previously documented - identifies active chunks, sorts needed chunks by distance, queues `ensureInitialized` task, unloads old chunks)
+*   **`render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)`**: Renders all initialized chunks.
+    *   Skips chunks if `!chunk->isInitialized()`.
+    *   Calls `chunk->renderSurface(projection, view)` for every initialized chunk to draw its optimized mesh.
+    *   Includes optional periodic debug output to `std::cout` showing number of rendered chunks vs. total, and player's chunk position.
+*   **`getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>)**: Returns chunk only if `it->second->isInitialized()` is true. (As previously documented)
+*   **`addChunk(...)`**: (As previously documented - creates placeholder, queues `ensureInitialized`)
+*   **`worldToChunkCoords(...)` (glm::ivec2)**: (As previously documented)
+*   **`getBlockAtWorldPos(...)` (std::shared_ptr<Block>)**: (As previously documented)
+*   **`saveAllChunks() const`**: (As previously documented)
 
 ---
 
@@ -754,5 +710,74 @@ This is a single-file public domain image loading library for C/C++. It's used i
 ### `res/textures/Spritesheet.PNG` in `res/textures/`
 This is the primary spritesheet image file intended for block textures. It is loaded by default in `Chunk::generateTerrain`. If this file is a texture atlas, all block faces will currently map the entire atlas. Specific sub-texture selection would require UV coordinate adjustments. If blocks appear white or untextured, ensure this file exists at `res/textures/Spritesheet.PNG` (accessible from the build directory as `build/res/textures/Spritesheet.PNG`), that it is a valid image file, and check the console output for any texture loading error messages.
 *(Note: This is an image file, content not displayed as text)*
+
+## Known Issues and Troubleshooting
+
+### OpenGL Context Issues
+
+The project is currently experiencing issues with OpenGL resource creation. Specifically:
+
+1. **Error creating Vertex Array Objects (VAOs)**: 
+   - `CRITICAL ERROR: Failed to generate VAO. Error code: 0`
+   - This prevents chunk meshes from being created and rendered
+
+2. **Error creating textures**:
+   - `ERROR::TEXTURE::CREATION_FAILED: Failed to generate texture (error 0)`
+   - This prevents textures from being loaded and applied to blocks
+
+These errors indicate a fundamental problem with the OpenGL context or driver. Here are potential solutions:
+
+#### Potential Solutions:
+
+1. **Check OpenGL Driver Compatibility**:
+   - The code is written for OpenGL 3.3 Core Profile
+   - Run `glxinfo | grep "OpenGL version"` to check your system's OpenGL version
+   - Update your graphics drivers if needed
+
+2. **Use Software Rendering Mode**:
+   - Set environment variable: `LIBGL_ALWAYS_SOFTWARE=1 ./AzureVoxel`
+   - This forces OpenGL to use software rendering instead of hardware acceleration
+
+3. **Try Compatibility Profile**:
+   - The current code attempts to use compatibility profile mode
+   - You might need to modify graphics settings on your system
+
+4. **Simplify Rendering Code**:
+   - Use simpler rendering techniques (immediate mode instead of VAOs)
+   - Reduce the number of concurrent OpenGL operations
+
+5. **Check for Resource Leaks**:
+   - Ensure all OpenGL resources are properly cleaned up
+   - Check for memory leaks or resource exhaustion
+
+#### Emergency Fallback:
+
+If you need to quickly see blocks rendered despite the OpenGL issues:
+
+1. Modify `Chunk::renderSurface()` to use immediate mode rendering (glBegin/glEnd)
+2. Disable texture loading and use solid colors for blocks
+3. Reduce render distance to minimize resource usage
+
+## Recent Updates and Optimizations
+
+### Shader System Improvements
+- Enhanced error handling in `Block::InitBlockShader()` with proper buffer initialization and comprehensive error checking
+- Added explicit OpenGL error state checking with `glGetError()` in shader compilation and initialization
+- Properly configured texture coordinate attributes (layout location = 1) in vertex shaders and attribute pointers
+
+### Chunk Rendering System Enhancements
+- Increased default render distance from 3 to 5 chunks for better visibility
+- Added parallel processing of up to 5 chunks at once in the worker thread system
+- Implemented detailed chunk loading progress indicators in the console output
+- Added comprehensive OpenGL error checking in the mesh building process
+- Optimized chunk initialization to prioritize loading from files over generation
+- Added performance logging for slow chunk operations to help identify bottlenecks
+- Fixed issues with texture loading in `Chunk::generateTerrain()` by properly declaring the `Block::loadTexture()` method that takes spritesheet parameters
+
+### General Optimizations
+- Reduced console output for common operations to improve performance
+- Prioritized chunks closest to the player for better visual experience
+- Improved error reporting for shader compilation and OpenGL operations
+- Enhanced mesh building with better error recovery and resource cleanup
 
  

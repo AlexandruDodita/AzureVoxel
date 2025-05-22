@@ -63,6 +63,10 @@ private:
     // Save all loaded chunks to files
     void saveAllChunks() const;
 
+    // Main thread tasks
+    std::queue<std::function<void()>> mainThreadTasks_;
+    std::mutex mainThreadTasksMutex_;
+
 public:
     // Constructor
     World(int renderDistance = 3);
@@ -95,4 +99,13 @@ public:
                                   static_cast<int>(std::floor(worldPos.y)), 
                                   static_cast<int>(std::floor(worldPos.z)));
     }
+
+    // Add a task to the main thread queue
+    void addMainThreadTask(const std::function<void()>& task);
+
+    // Process tasks from the main thread queue
+    void processMainThreadTasks();
+
+    // Getter for worldDataPath_
+    const std::string& getWorldDataPath() const { return worldDataPath_; }
 }; 

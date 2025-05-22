@@ -1,3 +1,0 @@
-/home/alexd/CLionProjects/AzureVoxel/build/CMakeFiles/AzureVoxel.dir
-/home/alexd/CLionProjects/AzureVoxel/build/CMakeFiles/edit_cache.dir
-/home/alexd/CLionProjects/AzureVoxel/build/CMakeFiles/rebuild_cache.dir

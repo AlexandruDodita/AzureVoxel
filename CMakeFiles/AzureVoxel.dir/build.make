@@ -204,7 +204,8 @@ AzureVoxel: CMakeFiles/AzureVoxel.dir/src/shader.cpp.o
 AzureVoxel: CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o
 AzureVoxel: CMakeFiles/AzureVoxel.dir/src/world.cpp.o
 AzureVoxel: CMakeFiles/AzureVoxel.dir/build.make
-AzureVoxel: /usr/lib/x86_64-linux-gnu/libGL.so
+AzureVoxel: /usr/lib/x86_64-linux-gnu/libOpenGL.so
+AzureVoxel: /usr/lib/x86_64-linux-gnu/libGLX.so
 AzureVoxel: /usr/lib/x86_64-linux-gnu/libGLU.so
 AzureVoxel: /usr/lib/x86_64-linux-gnu/libGLEW.so
 AzureVoxel: /usr/lib/x86_64-linux-gnu/libglfw.so.3.3

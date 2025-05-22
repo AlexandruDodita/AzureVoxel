@@ -4,6 +4,9 @@ project(AzureVoxel)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Prefer GLVND over legacy GL if available
+set(OpenGL_GL_PREFERENCE "GLVND")
+
 # Find OpenGL
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)

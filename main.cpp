@@ -26,96 +26,176 @@ float lastFpsTime = 0.0f;
 float fps = 0.0f;
 
 int main() {
-    // Create window
-    Window window(SCREEN_WIDTH, SCREEN_HEIGHT, "AzureVoxel - Press X for wireframe mode");
-    
-    // Initialize GLEW
-    glewExperimental = GL_TRUE;
-    GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW: " << glewGetErrorString(err) << std::endl;
+    // Initialize GLFW
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW" << std::endl;
         return -1;
     }
     
-    // Print OpenGL version
-    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
+    // Set OpenGL version to 3.3 COMPATIBILITY profile instead of core
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE); // Use compatibility profile
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     
+    // Create window
+    GLFWwindow* windowHandle = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, 
+                                              "AzureVoxel - Press X for wireframe mode", 
+                                              NULL, NULL);
+    if (!windowHandle) {
+        std::cerr << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+    
+    // Make the window's context current
+    glfwMakeContextCurrent(windowHandle);
+    
+    // Create our window object
+    Window window(windowHandle, SCREEN_WIDTH, SCREEN_HEIGHT);
+    
+    // Initialize GLEW
+    glewExperimental = GL_TRUE;
+    if (glewInit() != GLEW_OK) {
+        std::cerr << "Failed to initialize GLEW" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    // Clear any errors from GLEW initialization - this is normal
+    while (glGetError() != GL_NO_ERROR);
+
+    // Check for OpenGL context
+    if (glfwGetCurrentContext() == nullptr) {
+        std::cerr << "CRITICAL ERROR: No valid OpenGL context is current" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    // Print OpenGL context info
+    const GLubyte* renderer = glGetString(GL_RENDERER);
+    const GLubyte* version = glGetString(GL_VERSION);
+    const GLubyte* vendor = glGetString(GL_VENDOR);
+    std::cout << "OpenGL Vendor: " << (vendor ? reinterpret_cast<const char*>(vendor) : "Unknown") << std::endl;
+    std::cout << "OpenGL Renderer: " << (renderer ? reinterpret_cast<const char*>(renderer) : "Unknown") << std::endl;
+    std::cout << "OpenGL Version: " << (version ? reinterpret_cast<const char*>(version) : "Unknown") << std::endl;
+    
+    // Test basic OpenGL functions
+    GLuint testVAO = 0;
+    glGenVertexArrays(1, &testVAO);
+    if (testVAO == 0) {
+        std::cerr << "CRITICAL ERROR: Failed to generate test VAO. OpenGL context may be invalid." << std::endl;
+        GLenum error = glGetError();
+        std::cerr << "OpenGL error: " << error << std::endl;
+    } else {
+        std::cout << "Successfully generated test VAO: " << testVAO << std::endl;
+        glDeleteVertexArrays(1, &testVAO);
+    }
+    
+    // Initialize the static block shader program once
+    Block::InitBlockShader();
+
     // Enable depth testing
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS); // Accept fragment if it's closer to the camera than the former one
     
-    // Create a camera with elevated position for better view of terrain
-    Camera camera(glm::vec3(0.0f, 10.0f, 0.0f));
-    camera.setMouseSensitivity(0.05f); // Reduced mouse sensitivity
+    // For better block visibility
+    glEnable(GL_CULL_FACE); // Cull back faces
+    glCullFace(GL_BACK);
     
-    // Generate texture before creating the world
-    // std::cout << "Generating textures..." << std::endl;
-    // Use path relative to the project root, not the build directory
-    // system("cd .. && python3 create_texture.py");
+    // Create a camera with elevated position for better view of the world
+    Camera camera(glm::vec3(0.0f, 75.0f, 0.0f)); // Start high above for better view
+    camera.setMovementSpeed(25.0f); // Faster movement
+    camera.setMouseSensitivity(0.1f);
     
     // Create a 3x3 grid of chunks (9 total) with fully filled blocks
-    // Set render distance to 2 (chunks) for optimal performance
-    // std::cout << "Creating world with filled chunks..." << std::endl; // Removed this line
-    World world(3); // Render distance changed to 3 chunks (adjust as needed for performance/view)
-    // world.init(3); // REMOVED - World is now loaded dynamically
+    // Set render distance to 5 (chunks) for optimal performance
+    World world(5); // Render distance increased to 5 chunks for better visibility
     
-    // Game loop
+    // For measuring frame time
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
+    
+    // FPS counter
+    int frameCount = 0;
+    float fpsCountTime = 0.0f;
+    int fps = 0;
+    
+    // Main game loop
     while (!window.shouldClose()) {
-        // Calculate delta time
+        // Calculate deltaTime
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         
         // Calculate FPS
         frameCount++;
-        if (currentFrame - lastFpsTime >= 1.0f) {
-            fps = frameCount / (currentFrame - lastFpsTime);
+        fpsCountTime += deltaTime;
+        if (fpsCountTime >= 1.0f) {
+            fps = frameCount;
             frameCount = 0;
-            lastFpsTime = currentFrame;
+            fpsCountTime = 0.0f;
         }
         
-        // Process keyboard input for camera movement
+        // Process input
         camera.processKeyboard(window.getWindow(), deltaTime);
         
-        // Process mouse input for camera orientation
-        double mouseX, mouseY;
-        window.getMouseOffset(mouseX, mouseY);
-        if (mouseX != 0.0 || mouseY != 0.0) {
-            camera.processMouseMovement(mouseX, mouseY);
-        }
+        // Get mouse offset for camera rotation
+        double xOffset, yOffset;
+        window.getMouseOffset(xOffset, yOffset);
+        camera.processMouseMovement(xOffset, yOffset);
         window.resetMouseOffset();
         
-        // Create view matrix
+        // Create view matrix from camera
         glm::mat4 view = camera.getViewMatrix();
         
         // Create projection matrix
         glm::mat4 projection = glm::perspective(
-            glm::radians(camera.getFov()),                     // FOV
-            static_cast<float>(SCREEN_WIDTH) / SCREEN_HEIGHT,  // Aspect ratio
-            0.1f,                                              // Near plane
-            1000.0f                                            // Far plane (increased for larger world)
+            glm::radians(camera.getFov()),
+            (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+            0.1f, 1000.0f
         );
         
-        // Clear the screen
-        glClearColor(0.2f, 0.3f, 0.8f, 1.0f);  // Sky blue color
+        // Clear the screen with a nice sky blue color
+        glClearColor(0.5f, 0.7f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        // Update the world (load/unload chunks, build meshes)
+        // Check for OpenGL errors after clearing
+        GLenum error = glGetError();
+        if (error != GL_NO_ERROR) {
+            std::cerr << "OpenGL error after clearing screen: " << error << std::endl;
+        }
+        
+        // Update world (load/unload chunks around player)
         world.update(camera);
-
-        // Render the world (only chunks within render distance)
+        
+        // Process tasks queued for the main thread (OpenGL operations)
+        world.processMainThreadTasks();
+        
+        // Render world
         world.render(projection, view, camera);
         
-        // Display camera position and FPS
-        std::cout << "\rCamera: [" << camera.getPosition().x << ", " 
-                  << camera.getPosition().y << ", " 
-                  << camera.getPosition().z << "]  FPS: " 
-                  << static_cast<int>(fps) << "   " << std::flush;
+        // Check for OpenGL errors after rendering
+        error = glGetError();
+        if (error != GL_NO_ERROR) {
+            std::cerr << "OpenGL error after rendering: " << error << std::endl;
+        }
+        
+        // Display camera position (for debugging) and FPS
+        std::cout << "Camera: [" << camera.getPosition().x << ", " 
+                                 << camera.getPosition().y << ", " 
+                                 << camera.getPosition().z << "]  "
+                  << "FPS: " << fps << "   ";
         
         // Swap buffers and poll events
         window.swapBuffers();
         window.pollEvents();
     }
     
-    std::cout << std::endl; // Add a newline after the loop ends
+    // Cleanup
+    Block::CleanupBlockShader();
+    
+    std::cout << std::endl; // Add newline after loop ends
+    glfwTerminate(); // Terminate GLFW at the end
     return 0;
 }

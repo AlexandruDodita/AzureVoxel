@@ -4,32 +4,17 @@
 // Static variables to store input state
 Window* Window::currentWindow = nullptr;
 
-Window::Window(int width, int height, const std::string& title)
-    : width(width), height(height), title(title), window(nullptr),
+// New constructor that uses an existing GLFWwindow
+Window::Window(GLFWwindow* existingWindow, int width, int height)
+    : width(width), height(height), title("AzureVoxel"), window(existingWindow),
       lastX(width / 2.0), lastY(height / 2.0), xOffset(0.0), yOffset(0.0), firstMouse(true),
       wireframeMode(false) {
     
-    // Initialize GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return;
-    }
-    
-    // Configure GLFW
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    
-    // Create window
-    window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+    // The window is already created, just make sure we have the callbacks set
     if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
+        std::cerr << "Error: Null window handle provided to Window constructor" << std::endl;
         return;
     }
-    
-    // Make the window's context current
-    glfwMakeContextCurrent(window);
     
     // Set callbacks
     currentWindow = this;
@@ -37,15 +22,16 @@ Window::Window(int width, int height, const std::string& title)
     glfwSetKeyCallback(window, keyCallback);
     glfwSetCursorPosCallback(window, mouseCallback);
     
-    // Enable vsync
-    glfwSwapInterval(1);
+    std::cout << "Window object initialized with existing GLFWwindow handle" << std::endl;
 }
 
 Window::~Window() {
     if (window) {
-        glfwDestroyWindow(window);
+        // Only destroy the window if we created it in our original constructor
+        // Don't destroy if we received an existing window handle
+        // (that would be the responsibility of main.cpp)
     }
-    glfwTerminate();
+    // Don't terminate GLFW here anymore, as we might be using a window created elsewhere
 }
 
 bool Window::shouldClose() const {
