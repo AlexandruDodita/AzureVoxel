@@ -108,8 +108,8 @@ int main() {
     glDepthFunc(GL_LESS); // Accept fragment if it's closer to the camera than the former one
     
     // For better block visibility
-    // glEnable(GL_CULL_FACE); // Temporarily disable for diagnostics
-    // glCullFace(GL_BACK);    // Temporarily disable for diagnostics
+    glEnable(GL_CULL_FACE); // Re-enable face culling
+    glCullFace(GL_BACK);    // Cull back faces
     
     // Create a camera with elevated position for better view of the world
     Camera camera(glm::vec3(0.0f, 75.0f, 0.0f)); // Start high above for better view

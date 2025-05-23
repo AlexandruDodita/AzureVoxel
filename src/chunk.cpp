@@ -18,18 +18,18 @@
 
 // Vertex positions (relative to block center)
 const glm::vec3 faceVertices[][4] = {
-    // Back (-Z)
-    { {-0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f} },
-    // Front (+Z)
+    // Back (-Z) CCW from outside (looking along +Z axis)
+    { { 0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f} },
+    // Front (+Z) CCW from outside (looking along -Z axis)
     { {-0.5f, -0.5f,  0.5f}, { 0.5f, -0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f} },
-    // Left (-X)
-    { {-0.5f, -0.5f,  0.5f}, {-0.5f, -0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f,  0.5f} },
-    // Right (+X)
+    // Left (-X) CCW from outside (looking along +X axis)
+    { {-0.5f, -0.5f, -0.5f}, {-0.5f, -0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f, -0.5f} },
+    // Right (+X) CCW from outside (looking along -X axis)
     { { 0.5f, -0.5f,  0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f,  0.5f} },
-    // Bottom (-Y)
+    // Bottom (-Y) CCW from outside (looking along +Y axis)
     { {-0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f, -0.5f}, { 0.5f, -0.5f,  0.5f}, {-0.5f, -0.5f,  0.5f} },
-    // Top (+Y)
-    { {-0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f, -0.5f}, { 0.5f,  0.5f,  0.5f}, {-0.5f,  0.5f,  0.5f} }
+    // Top (+Y) CCW from outside (looking along -Y axis)
+    { {-0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f,  0.5f}, { 0.5f,  0.5f, -0.5f}, {-0.5f,  0.5f, -0.5f} }
 };
 
 // Texture coordinates (standard square)
@@ -204,12 +204,13 @@ void Chunk::buildSurfaceMesh(const World* world) {
                             }
                         }
                         
-                        meshIndices.push_back(vertexIndexOffset);
+                        meshIndices.push_back(vertexIndexOffset + 0);
                         meshIndices.push_back(vertexIndexOffset + 1);
                         meshIndices.push_back(vertexIndexOffset + 2);
+                        
                         meshIndices.push_back(vertexIndexOffset + 2);
                         meshIndices.push_back(vertexIndexOffset + 3);
-                        meshIndices.push_back(vertexIndexOffset);
+                        meshIndices.push_back(vertexIndexOffset + 0);
                         
                         vertexIndexOffset += 4;
                     }
