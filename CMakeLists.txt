@@ -22,6 +22,7 @@ set(SOURCES
     src/shader.cpp
     src/chunk.cpp
     src/world.cpp
+    src/crosshair.cpp
 )
 
 # Headers
@@ -33,6 +34,7 @@ set(HEADERS
     headers/shader.h
     headers/chunk.h
     headers/world.h
+    headers/crosshair.h
 )
 
 # Create executable
@@ -50,10 +52,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${OPENGL_LIBRARIES}
     GLEW::GLEW
     glfw
+    pthread
 )
 
 # Copy shader files to the build directory
-file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY
+    ${CMAKE_SOURCE_DIR}/shaders/vertex.glsl
+    ${CMAKE_SOURCE_DIR}/shaders/fragment.glsl
+    ${CMAKE_SOURCE_DIR}/shaders/crosshair_vertex.glsl
+    ${CMAKE_SOURCE_DIR}/shaders/crosshair_fragment.glsl
+    DESTINATION ${CMAKE_BINARY_DIR}/shaders
+)
 
 # Copy resource directory to the build directory
 file(COPY ${CMAKE_SOURCE_DIR}/res DESTINATION ${CMAKE_BINARY_DIR})

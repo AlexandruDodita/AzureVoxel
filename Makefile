@@ -225,6 +225,30 @@ src/chunk.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/chunk.cpp.s
 .PHONY : src/chunk.cpp.s
 
+src/crosshair.o: src/crosshair.cpp.o
+.PHONY : src/crosshair.o
+
+# target to build an object file
+src/crosshair.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o
+.PHONY : src/crosshair.cpp.o
+
+src/crosshair.i: src/crosshair.cpp.i
+.PHONY : src/crosshair.i
+
+# target to preprocess a source file
+src/crosshair.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.i
+.PHONY : src/crosshair.cpp.i
+
+src/crosshair.s: src/crosshair.cpp.s
+.PHONY : src/crosshair.s
+
+# target to generate assembly for a file
+src/crosshair.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.s
+.PHONY : src/crosshair.cpp.s
+
 src/shader.o: src/shader.cpp.o
 .PHONY : src/shader.o
 
@@ -342,6 +366,9 @@ help:
 	@echo "... src/chunk.o"
 	@echo "... src/chunk.i"
 	@echo "... src/chunk.s"
+	@echo "... src/crosshair.o"
+	@echo "... src/crosshair.i"
+	@echo "... src/crosshair.s"
 	@echo "... src/shader.o"
 	@echo "... src/shader.i"
 	@echo "... src/shader.s"

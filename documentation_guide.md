@@ -17,6 +17,7 @@
 │   ├── block.h
 │   ├── camera.h
 │   ├── chunk.h
+│   ├── crosshair.h  // New: Crosshair class header
 │   ├── shader.h
 │   ├── texture.h
 │   ├── window.h
@@ -28,6 +29,8 @@
 │       ├── grass_block.png Zone.Identifier # Should be deleted if not used
 │       └── spritesheet.png // Master spritesheet for block textures
 └── shaders/
+    ├── crosshair_fragment.glsl // New: Crosshair fragment shader
+    ├── crosshair_vertex.glsl   // New: Crosshair vertex shader
     ├── fragment.glsl
     ├── vertex.glsl
     └── vortex.glsl # Typo? Should likely be vertex.glsl or similar.
@@ -35,6 +38,7 @@
     ├── block.cpp
     ├── camera.cpp
     ├── chunk.cpp
+    ├── crosshair.cpp  // New: Crosshair class implementation
     ├── shader.cpp
     ├── texture.cpp
     ├── window.cpp
@@ -46,12 +50,13 @@
 ## File Details
 
 ### `main.cpp` in `./`
-This file serves as the main entry point for the AzureVoxel application. It initializes GLFW, GLEW, creates the game window, sets up the camera and world, and runs the main game loop. It now also initializes a global spritesheet texture and enables mouse capture.
+This file serves as the main entry point for the AzureVoxel application. It initializes GLFW, GLEW, creates the game window, sets up the camera, world, and a 2D crosshair, and runs the main game loop. It now also initializes a global spritesheet texture and enables mouse capture.
 
 *   **`main()`** - Primary application function.
     *   Initializes GLFW and GLEW.
     *   Creates a `Window` object using an existing `GLFWwindow*`.
     *   Calls `window.enableMouseCapture(true);` to lock and hide the cursor for FPS-style camera control.
+    *   Initializes a `Crosshair` object, passing screen dimensions.
     *   Calls `Block::InitBlockShader()` to set up the static shader for blocks.
     *   Calls `Block::InitSpritesheet("res/textures/Spritesheet.PNG")` to load the global texture atlas.
     *   Enables depth testing and face culling.
@@ -59,13 +64,14 @@ This file serves as the main entry point for the AzureVoxel application. It init
     *   Enters the main game loop:
         *   Calculates `deltaTime` and FPS.
         *   Processes keyboard and mouse input for camera movement.
-        *   Calculates view and projection matrices.
+        *   Calculates view and projection matrices (for 3D world and 2D UI/crosshair).
         *   Clears the screen.
         *   Calls `world.update(camera)` to manage chunk loading/unloading.
         *   Calls `world.processMainThreadTasks()` for OpenGL operations queued by worker threads.
-        *   Calls `world.render(projection, view, camera, window.isWireframeMode())` to draw the scene, now passing the window's wireframe state.
+        *   Calls `world.render(...)` to draw the 3D scene.
+        *   Calls `crosshair->render()` to draw the 2D crosshair on top.
         *   Swaps window buffers and polls events.
-    *   After the loop, calls `Block::CleanupBlockShader()` and `glfwTerminate()`.
+    *   After the loop, cleans up `Block::CleanupBlockShader()`, deletes the `crosshair` object, and calls `glfwTerminate()`.
     *   Console output for FPS and camera position updates once per second using `\r` for same-line output.
 
 ---
@@ -99,15 +105,15 @@ This Python script is responsible for programmatically generating a texture for 
 ---
 
 ### `CMakeLists.txt` in `./`
-This file contains instructions for CMake, a cross-platform build system generator. It defines how the AzureVoxel project should be built, including specifying the C++ standard, finding necessary libraries (OpenGL, GLEW, GLFW), listing source and header files, creating the executable, setting include directories, and linking libraries. It also handles copying shader and resource files (including `Spritesheet.PNG`) to the build directory.
+This file contains instructions for CMake, a cross-platform build system generator. It defines how the AzureVoxel project should be built, including specifying the C++ standard, finding necessary libraries (OpenGL, GLEW, GLFW), listing source and header files, creating the executable, setting include directories, and linking libraries. It also handles copying shader and resource files (including `Spritesheet.PNG`, and now `crosshair_vertex.glsl`, `crosshair_fragment.glsl`) to the build directory.
 
 *   **`cmake_minimum_required(VERSION 3.10)`** - Specifies the minimum required version of CMake.
 *   **`project(AzureVoxel)`** - Sets the name of the project to "AzureVoxel".
 *   **`set(CMAKE_CXX_STANDARD 17)`** - Sets the C++ standard to C++17.
 *   **`set(CMAKE_CXX_STANDARD_REQUIRED ON)`** - Enforces the C++17 standard.
-*   **`find_package(OpenGL REQUIRED)`** - Finds the OpenGL library; it\'s a required dependency.
-*   **`find_package(GLEW REQUIRED)`** - Finds the GLEW (OpenGL Extension Wrangler Library); it\'s a required dependency.
-*   **`find_package(glfw3 3.3 REQUIRED)`** - Finds the GLFW library (version 3.3 or higher); it\'s a required dependency for windowing and input handling.
+*   **`find_package(OpenGL REQUIRED)`** - Finds the OpenGL library; it's a required dependency.
+*   **`find_package(GLEW REQUIRED)`** - Finds the GLEW (OpenGL Extension Wrangler Library); it's a required dependency.
+*   **`find_package(glfw3 3.3 REQUIRED)`** - Finds the GLFW library (version 3.3 or higher); it's a required dependency for windowing and input handling.
 *   **`set(SOURCES ...)`** - Defines a variable `SOURCES` containing a list of all .cpp source files used in the project.
     *   `main.cpp`
     *   `src/window.cpp`
@@ -117,6 +123,7 @@ This file contains instructions for CMake, a cross-platform build system generat
     *   `src/shader.cpp`
     *   `src/chunk.cpp`
     *   `src/world.cpp`
+    *   `src/crosshair.cpp` // New: Crosshair implementation file
 *   **`set(HEADERS ...)`** - Defines a variable `HEADERS` containing a list of all .h header files used in the project.
     *   `headers/window.h`
     *   `headers/block.h`
@@ -125,6 +132,7 @@ This file contains instructions for CMake, a cross-platform build system generat
     *   `headers/shader.h`
     *   `headers/chunk.h`
     *   `headers/world.h`
+    *   `headers/crosshair.h` // New: Crosshair header file
 *   **`add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})`** - Creates an executable named "AzureVoxel" from the specified source and header files.
 *   **`target_include_directories(${PROJECT_NAME} PRIVATE ...)`** - Specifies the include directories for the "AzureVoxel" target.
     *   `${CMAKE_SOURCE_DIR}` (the root directory of the project)
@@ -134,7 +142,8 @@ This file contains instructions for CMake, a cross-platform build system generat
     *   `${OPENGL_LIBRARIES}` (OpenGL libraries)
     *   `GLEW::GLEW` (GLEW library, using its imported target)
     *   `glfw` (GLFW library for windowing and input)
-*   **`file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR})`** - Copies the entire `shaders` directory from the source directory to the build directory.
+    *   `pthread` (For std::thread compatibility on some platforms)
+*   **`file(COPY ... DESTINATION ${CMAKE_BINARY_DIR}/shaders)`** - Copies all shader files (vertex.glsl, fragment.glsl, crosshair_vertex.glsl, crosshair_fragment.glsl) to the `shaders` subdirectory in the build directory.
 *   **`file(COPY ${CMAKE_SOURCE_DIR}/res DESTINATION ${CMAKE_BINARY_DIR})`** - Copies the entire `res` (resources) directory from the source directory to the build directory.
 
 ---
@@ -671,12 +680,56 @@ This file implements the `World` class methods. Manages chunks, including loadin
     *   Periodic render statistics in console are now commented out.
 
 ---
-*This is a summary of key changes. Other files like `headers/window.h`, `src/window.cpp`, `headers/camera.h`, `src/camera.cpp`, `headers/texture.h`, `src/texture.cpp`, `headers/shader.h`, `src/shader.cpp` are assumed to be largely unchanged by this specific set of modifications unless mentioned. Review their respective sections if other changes were made.*
 
-(The rest of the documentation guide, like Key Components, Known Issues, etc., would follow, updated as needed.)
+### `src/crosshair.cpp` in `src/`
+This file implements the `Crosshair` class.
 
+*   **`Crosshair(int screenWidth, int screenHeight)` (Constructor)**:
+    *   Initializes its `Shader` member, loading `shaders/crosshair_vertex.glsl` and `shaders/crosshair_fragment.glsl`.
+    *   Stores `screenWidth` and `screenHeight`.
+    *   Calculates an orthographic `projection_` matrix: `glm::ortho(0.0f, static_cast<float>(screenWidth_), 0.0f, static_cast<float>(screenHeight_))`.
+    *   Calls `setupMesh()`.
+*   **`~Crosshair()` (Destructor)**:
+    *   Calls `glDeleteVertexArrays(1, &VAO_)` and `glDeleteBuffers(1, &VBO_)`.
+*   **`setupMesh()`**: 
+    *   Defines `crosshairSize` (e.g., 20.0f) and `thickness` (e.g., 2.0f).
+    *   Calculates `centerX` and `centerY` based on `screenWidth_` and `screenHeight_`.
+    *   Creates a `std::vector<glm::vec2>` for vertices, defining two quads (a horizontal and a vertical line) centered at `centerX, centerY`.
+    *   Generates and binds VAO and VBO.
+    *   Buffers the vertex data to the VBO (`GL_STATIC_DRAW`).
+    *   Sets up vertex attribute pointer for `layout (location = 0)` (2D position), `sizeof(glm::vec2)` stride.
+    *   Unbinds VBO and VAO.
+*   **`render()`**: 
+    *   Calls `glDisable(GL_DEPTH_TEST)`.
+    *   Uses `shader_`.
+    *   Sets `projection` uniform on the shader with `projection_`.
+    *   Sets `crosshairColor` uniform (e.g., to white `glm::vec3(1.0f, 1.0f, 1.0f)`).
+    *   Binds `VAO_`.
+    *   Draws the two quads using `glDrawArrays(GL_TRIANGLE_FAN, 0, 4)` and `glDrawArrays(GL_TRIANGLE_FAN, 4, 4)`.
+    *   Unbinds `VAO_`.
+    *   Calls `glEnable(GL_DEPTH_TEST)`.
+*   **`updateScreenSize(int screenWidth, int screenHeight)`**: 
+    *   Updates `screenWidth_` and `screenHeight_` members.
+    *   Recalculates `projection_` matrix using the new dimensions.
+    *   (Note: Current implementation doesn't re-call `setupMesh()`, so crosshair pixel size is fixed. If relative sizing is needed, `setupMesh()` would need to be recalled after deleting old VAO/VBO).
 
 ---
+
+### `shaders/crosshair_vertex.glsl` in `shaders/`
+A simple vertex shader for 2D rendering.
+*   Takes a 2D position `aPos` (layout location 0).
+*   Takes a `uniform mat4 projection` (orthographic projection matrix).
+*   Outputs `gl_Position = projection * vec4(aPos.x, aPos.y, 0.0, 1.0);`.
+
+---
+
+### `shaders/crosshair_fragment.glsl` in `shaders/`
+A simple fragment shader for 2D rendering.
+*   Takes a `uniform vec3 crosshairColor`.
+*   Outputs `FragColor = vec4(crosshairColor, 1.0);`.
+
+---
+
 ### `external/stb_image.h` in `external/`
 This is a single-file public domain image loading library for C/C++. It's used in this project (specifically in `src/texture.cpp`) to load image files (like PNGs for textures) from disk into memory so they can be processed and uploaded to the GPU as OpenGL textures.
 *(Note: Third-party library header, content not detailed here but widely available)*

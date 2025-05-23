@@ -9,6 +9,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/AzureVoxel.dir/src/camera.cpp.o.d"
   "CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o"
   "CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o.d"
+  "CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o"
+  "CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o.d"
   "CMakeFiles/AzureVoxel.dir/src/shader.cpp.o"
   "CMakeFiles/AzureVoxel.dir/src/shader.cpp.o.d"
   "CMakeFiles/AzureVoxel.dir/src/texture.cpp.o"

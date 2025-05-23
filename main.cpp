@@ -12,6 +12,7 @@
 #include "headers/texture.h"
 #include "headers/camera.h"
 #include "headers/world.h"
+#include "headers/crosshair.h" // Include Crosshair header
 
 // Window dimensions
 const unsigned int SCREEN_WIDTH = 800;
@@ -25,6 +26,8 @@ float lastFrame = 0.0f;  // Time of last frame
 int frameCount = 0;
 float lastFpsTime = 0.0f;
 float fps = 0.0f;
+
+Crosshair* crosshair = nullptr; // Declare crosshair pointer
 
 int main() {
     // Initialize GLFW
@@ -117,6 +120,9 @@ int main() {
     // Set render distance to 5 (chunks) for optimal performance
     World world(5); // Render distance increased to 5 chunks for better visibility
     
+    // Initialize Crosshair
+    crosshair = new Crosshair(SCREEN_WIDTH, SCREEN_HEIGHT);
+
     // For measuring frame time
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
@@ -180,10 +186,9 @@ int main() {
         // Render world, passing wireframe state from the window
         world.render(projection, view, camera, window.isWireframeMode());
         
-        // Check for OpenGL errors after rendering
-        error = glGetError();
-        if (error != GL_NO_ERROR) {
-            std::cerr << "OpenGL error after rendering: " << error << std::endl;
+        // Render Crosshair
+        if (crosshair) {
+            crosshair->render();
         }
         
         // Display camera position (for debugging) and FPS - update once per second
@@ -204,6 +209,10 @@ int main() {
     
     // Cleanup
     Block::CleanupBlockShader();
+    if (crosshair) {
+        delete crosshair;
+        crosshair = nullptr;
+    }
     
     std::cout << std::endl; // Ensure cursor moves to next line on exit
     glfwTerminate(); // Terminate GLFW at the end

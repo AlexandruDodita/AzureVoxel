@@ -12,6 +12,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/alexd/Desktop/Projects/AzureVoxel/src/block.cpp" "CMakeFiles/AzureVoxel.dir/src/block.cpp.o" "gcc" "CMakeFiles/AzureVoxel.dir/src/block.cpp.o.d"
   "/home/alexd/Desktop/Projects/AzureVoxel/src/camera.cpp" "CMakeFiles/AzureVoxel.dir/src/camera.cpp.o" "gcc" "CMakeFiles/AzureVoxel.dir/src/camera.cpp.o.d"
   "/home/alexd/Desktop/Projects/AzureVoxel/src/chunk.cpp" "CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o" "gcc" "CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o.d"
+  "/home/alexd/Desktop/Projects/AzureVoxel/src/crosshair.cpp" "CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o" "gcc" "CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o.d"
   "/home/alexd/Desktop/Projects/AzureVoxel/src/shader.cpp" "CMakeFiles/AzureVoxel.dir/src/shader.cpp.o" "gcc" "CMakeFiles/AzureVoxel.dir/src/shader.cpp.o.d"
   "/home/alexd/Desktop/Projects/AzureVoxel/src/texture.cpp" "CMakeFiles/AzureVoxel.dir/src/texture.cpp.o" "gcc" "CMakeFiles/AzureVoxel.dir/src/texture.cpp.o.d"
   "/home/alexd/Desktop/Projects/AzureVoxel/src/window.cpp" "CMakeFiles/AzureVoxel.dir/src/window.cpp.o" "gcc" "CMakeFiles/AzureVoxel.dir/src/window.cpp.o.d"
