@@ -192,6 +192,7 @@ void Chunk::buildSurfaceMesh(const World* world) {
                             meshVertices.push_back(vy);
                             meshVertices.push_back(vz);
                             
+                            // Original logic for all block types
                             if (Block::spritesheetLoaded && Block::spritesheetTexture.getWidth() > 0 && Block::spritesheetTexture.getHeight() > 0) {
                                 float actualU = (uvPixelOffsetX + texCoords[i].x * 80.0f) / Block::spritesheetTexture.getWidth();
                                 float actualV = (uvPixelOffsetY + texCoords[i].y * 80.0f) / Block::spritesheetTexture.getHeight();

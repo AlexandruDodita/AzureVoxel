@@ -36,8 +36,7 @@ const char* fragmentShaderSource = R"(
     void main() {
         if (useTexture) {
             vec4 texColor = texture(blockTexture, TexCoord);
-            if(texColor.a < 0.1) 
-                discard;
+            if(texColor.a < 0.1) discard;
             FragColor = texColor;
         } else {
             // Fallback color if no texture (can use blockColor uniform)
