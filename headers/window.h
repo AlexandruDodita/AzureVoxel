@@ -10,14 +10,12 @@ private:
     int width;
     int height;
     std::string title;
+    bool wireframeMode;
     
     // Mouse position variables
     double lastX, lastY;
     double xOffset, yOffset;
     bool firstMouse;
-    
-    // Wireframe mode
-    bool wireframeMode;
     
     // Callback functions
     static void framebufferSizeCallback(GLFWwindow* window, int width, int height);

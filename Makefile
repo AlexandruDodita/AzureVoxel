@@ -249,6 +249,30 @@ src/crosshair.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.s
 .PHONY : src/crosshair.cpp.s
 
+src/planet.o: src/planet.cpp.o
+.PHONY : src/planet.o
+
+# target to build an object file
+src/planet.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/planet.cpp.o
+.PHONY : src/planet.cpp.o
+
+src/planet.i: src/planet.cpp.i
+.PHONY : src/planet.i
+
+# target to preprocess a source file
+src/planet.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/planet.cpp.i
+.PHONY : src/planet.cpp.i
+
+src/planet.s: src/planet.cpp.s
+.PHONY : src/planet.s
+
+# target to generate assembly for a file
+src/planet.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/planet.cpp.s
+.PHONY : src/planet.cpp.s
+
 src/shader.o: src/shader.cpp.o
 .PHONY : src/shader.o
 
@@ -369,6 +393,9 @@ help:
 	@echo "... src/crosshair.o"
 	@echo "... src/crosshair.i"
 	@echo "... src/crosshair.s"
+	@echo "... src/planet.o"
+	@echo "... src/planet.i"
+	@echo "... src/planet.s"
 	@echo "... src/shader.o"
 	@echo "... src/shader.i"
 	@echo "... src/shader.s"

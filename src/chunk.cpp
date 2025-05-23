@@ -11,6 +11,7 @@
 #include <chrono> // For timing
 #include <thread> // For std::this_thread
 #include <GLFW/glfw3.h> // Required for glfwGetCurrentContext
+#include <glm/gtc/noise.hpp> // For glm::simplex, if used for spherical terrain
 
 // --- Vertex data for a single block face ---
 // Order: Position (3 floats), Texture Coords (2 floats)
@@ -37,24 +38,22 @@ const glm::vec2 texCoords[] = {
     {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}
 };
 
-Chunk::Chunk(const glm::vec3& position) : position(position), needsRebuild(true), isInitialized_(false) {
-    // Initialize blockDataForInitialization_ with default BlockInfo (air)
-    blockDataForInitialization_.resize(CHUNK_SIZE_X,
-                                 std::vector<std::vector<BlockInfo>>(
-                                     CHUNK_SIZE_Y,
-                                     std::vector<BlockInfo>(CHUNK_SIZE_Z)));
-    // Initialize blocks_ with nullptr
-    blocks_.resize(CHUNK_SIZE_X, 
-                 std::vector<std::vector<std::shared_ptr<Block>>>(
-                     CHUNK_SIZE_Y,
-                     std::vector<std::shared_ptr<Block>>(CHUNK_SIZE_Z, nullptr)));
+Chunk::Chunk(const glm::vec3& position)
+    : position(position), needsRebuild(true), isInitialized_(false) {
+    blocks_.resize(CHUNK_SIZE_X, std::vector<std::vector<std::shared_ptr<Block>>>(
+                                   CHUNK_SIZE_Y, std::vector<std::shared_ptr<Block>>(
+                                                 CHUNK_SIZE_Z, nullptr)));
+    blockDataForInitialization_.resize(CHUNK_SIZE_X, std::vector<std::vector<BlockInfo>>(
+                                                      CHUNK_SIZE_Y, std::vector<BlockInfo>(
+                                                                    CHUNK_SIZE_Z, BlockInfo())));
+    // No planet context by default
 }
 
 Chunk::~Chunk() {
     cleanupMesh();
 }
 
-void Chunk::init(const World* world) {
+void Chunk::init(const World* /*world*/) {
     // This method's role changes. The primary initialization including
     // terrain generation/loading and mesh building will be handled by ensureInitialized.
     // For now, we can leave it empty or for very minimal, non-conditional setup if any.
@@ -70,256 +69,6 @@ float simpleNoise(int x, int y, int z, int seed) {
     return static_cast<float>((h ^ (h >> 16)) & 0x7fffffff) / static_cast<float>(0x7fffffff);
 }
 
-// --- generateTerrain_DataOnly, loadFromFile_DataOnly, openglInitialize are implemented above ---
-
-// --- Ensure old ensureInitialized, prepareBlockData, generateTerrain, loadFromFile are removed or commented out ---
-
-/*
-// Old ensureInitialized - REMOVE/COMMENT OUT
-void Chunk::ensureInitialized(World* world, int seed, const std::string& worldDataPath) {
-    // ... old implementation ...
-}
-*/
-
-/*
-// Old prepareBlockData - REMOVE/COMMENT OUT
-void Chunk::prepareBlockData(World* world, int seed, const std::string& worldDataPath) {
-    // ... old implementation ...
-}
-*/
-
-/* 
-// Old generateTerrain - REMOVE/COMMENT OUT
-void Chunk::generateTerrain(int seed) { 
-    // ... old implementation ...
-}
-*/
-
-/*
-// Old loadFromFile - REMOVE/COMMENT OUT
-bool Chunk::loadFromFile(const std::string& directoryPath, const World* world) {
-    // ... old implementation ...
-}
-*/
-
-// Builds a single mesh containing only the visible faces of the blocks in this chunk.
-void Chunk::buildSurfaceMesh(const World* world) {
-    // First, clear any existing mesh data
-    cleanupMesh(); // This resets surfaceMesh.VAO to 0
-
-    // Reserve memory based on estimated size to prevent reallocations
-    const size_t estimatedFaces = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z * 6 / 4;
-    meshVertices.reserve(estimatedFaces * 4 * 5); // 4 vertices per face, 5 floats per vertex
-    meshIndices.reserve(estimatedFaces * 6); // 6 indices per face
-    
-    unsigned int vertexIndexOffset = 0;
-
-    // Define neighbor offsets for checking each face
-    const int neighborOffsets[6][3] = {
-        { 0,  0, -1}, // Back
-        { 0,  0,  1}, // Front
-        {-1,  0,  0}, // Left
-        { 1,  0,  0}, // Right
-        { 0, -1,  0}, // Bottom
-        { 0,  1,  0}  // Top
-    };
-
-    // Loop through all block positions
-    for (int x = 0; x < CHUNK_SIZE_X; ++x) {
-        for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
-            for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
-                if (!hasBlockAtLocal(x, y, z)) {
-                    continue; // Skip empty positions
-                }
-
-                // Check each face of the block
-                for (int face = 0; face < 6; ++face) {
-                    int nx = x + neighborOffsets[face][0];
-                    int ny = y + neighborOffsets[face][1];
-                    int nz = z + neighborOffsets[face][2];
-
-                    // Check if neighbor is outside chunk borders
-                    bool shouldRenderFace = false;
-                    if (nx < 0 || nx >= CHUNK_SIZE_X || ny < 0 || ny >= CHUNK_SIZE_Y || nz < 0 || nz >= CHUNK_SIZE_Z) {
-                        // If neighbor is in adjacent chunk, check that chunk
-                        glm::ivec3 neighborWorldPos = glm::ivec3(position) + glm::ivec3(x, y, z) + glm::ivec3(neighborOffsets[face][0], neighborOffsets[face][1], neighborOffsets[face][2]);
-                        glm::ivec2 neighborChunkPos = world->worldToChunkCoords(glm::vec3(neighborWorldPos));
-                        
-                        // Get the adjacent chunk (if any)
-                        auto adjChunk = const_cast<World*>(world)->getChunkAt(neighborChunkPos.x, neighborChunkPos.y);
-                        if (!adjChunk) {
-                            shouldRenderFace = true; // No adjacent chunk, so render this face
-                        } else {
-                            // Convert world position to local position in adjacent chunk
-                            glm::ivec3 localBlockPos = neighborWorldPos - glm::ivec3(adjChunk->getPosition());
-                            shouldRenderFace = !adjChunk->hasBlockAtLocal(localBlockPos.x, localBlockPos.y, localBlockPos.z);
-                        }
-                    } else {
-                        // Neighbor is within this chunk
-                        shouldRenderFace = !hasBlockAtLocal(nx, ny, nz);
-                    }
-
-                    if (shouldRenderFace) {
-                        unsigned char blockType = blockDataForInitialization_[x][y][z].type;
-                        float uvPixelOffsetX = 0.0f;
-                        float uvPixelOffsetY = 0.0f;
-
-                        if (Block::spritesheetLoaded && Block::spritesheetTexture.getWidth() > 0 && Block::spritesheetTexture.getHeight() > 0) {
-                            if (blockType == 1) { // Stone
-                                uvPixelOffsetX = 0.0f; 
-                                uvPixelOffsetY = 0.0f; // Assuming stone is at (0,0) in the atlas
-                            } else if (blockType == 2) { // Grass
-                                uvPixelOffsetX = 80.0f; // Grass at (80,0)
-                                uvPixelOffsetY = 0.0f;
-                            } else if (blockType == 3) { // Dirt (Example - new type)
-                                uvPixelOffsetX = 160.0f; // Dirt at (160,0)
-                                uvPixelOffsetY = 0.0f;
-                            } else if (blockType == 4) { // Wood (Example - new type)
-                                uvPixelOffsetX = 0.0f;  // Wood at (0,80) on the next row
-                                uvPixelOffsetY = 80.0f;
-                            }
-                            // Add other block types as needed, ensuring their UVs are mapped correctly
-                        } else if (blockType != 0) {
-                            // std::cout << "Warning: Spritesheet not loaded, cannot set UVs for block type " << (int)blockType << std::endl; 
-                        }
-
-                        for (int i = 0; i < 4; ++i) {
-                            float vx = x + faceVertices[face][i][0];
-                            float vy = y + faceVertices[face][i][1];
-                            float vz = z + faceVertices[face][i][2];
-                            
-                            meshVertices.push_back(vx);
-                            meshVertices.push_back(vy);
-                            meshVertices.push_back(vz);
-                            
-                            // Original logic for all block types
-                            if (Block::spritesheetLoaded && Block::spritesheetTexture.getWidth() > 0 && Block::spritesheetTexture.getHeight() > 0) {
-                                float actualU = (uvPixelOffsetX + texCoords[i].x * 80.0f) / Block::spritesheetTexture.getWidth();
-                                float actualV = (uvPixelOffsetY + texCoords[i].y * 80.0f) / Block::spritesheetTexture.getHeight();
-                                meshVertices.push_back(actualU);
-                                meshVertices.push_back(actualV);
-                            } else {
-                                meshVertices.push_back(texCoords[i].x); // Fallback: full texture UVs
-                                meshVertices.push_back(texCoords[i].y);
-                            }
-                        }
-                        
-                        meshIndices.push_back(vertexIndexOffset + 0);
-                        meshIndices.push_back(vertexIndexOffset + 1);
-                        meshIndices.push_back(vertexIndexOffset + 2);
-                        
-                        meshIndices.push_back(vertexIndexOffset + 2);
-                        meshIndices.push_back(vertexIndexOffset + 3);
-                        meshIndices.push_back(vertexIndexOffset + 0);
-                        
-                        vertexIndexOffset += 4;
-                    }
-                }
-            }
-        }
-    }
-
-    // Early exit if no vertices to render
-    if (meshVertices.empty()) {
-        // std::cout << "No faces to render for chunk at " << position.x << "," << position.z << std::endl; // Keep commented
-        surfaceMesh.indexCount = 0;
-        surfaceMesh.VAO = 0;
-        needsRebuild = false;
-        return;
-    }
-
-    // Create placeholder blocks if we don't have any yet to ensure shaders are initialized
-    if (Block::shaderProgram == 0) {
-        // std::cout << "WARNING: Block shader not initialized yet. Initializing now." << std::endl; // Keep commented
-        Block::InitBlockShader();
-    }
-
-    // Force-clear any existing OpenGL errors before we start
-    while (glGetError() != GL_NO_ERROR) {}
-
-    // Create OpenGL resources
-    GLuint vao = 0, vbo = 0, ebo = 0;
-    
-    // Check OpenGL context
-    if (glfwGetCurrentContext() == nullptr) {
-        std::cerr << "CRITICAL ERROR: No OpenGL context is current during mesh building! Chunk: " << position.x << "," << position.z << std::endl; // Keep critical errors
-        return;
-    }
-    
-    // IMPORTANT: Force synchronization with the driver before creating resources
-    glFinish();
-    
-    // Create vertex array object first
-    glGenVertexArrays(1, &vao);
-    GLenum error = glGetError();
-    if (error != GL_NO_ERROR || vao == 0) {
-        std::cerr << "CRITICAL ERROR: Failed to generate VAO for chunk at " << position.x << "," << position.z << " OpenGL error: " << error << std::endl; // Keep critical
-        return; // Simplified retry logic, just return if first fails
-    }
-    
-    // Bind VAO first to capture all subsequent bindings
-    glBindVertexArray(vao);
-    
-    // Create and bind vertex buffer
-    glGenBuffers(1, &vbo);
-    error = glGetError();
-    if (error != GL_NO_ERROR || vbo == 0) {
-        std::cerr << "ERROR: Failed to generate VBO for chunk " << position.x << "," << position.z << ". Error: " << error << std::endl; // Keep critical
-        glDeleteVertexArrays(1, &vao);
-        return;
-    }
-    
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_STATIC_DRAW);
-    
-    // Create and bind element buffer
-    glGenBuffers(1, &ebo);
-    error = glGetError();
-    if (error != GL_NO_ERROR || ebo == 0) {
-        std::cerr << "ERROR: Failed to generate EBO for chunk " << position.x << "," << position.z << ". Error: " << error << std::endl; // Keep critical
-        glDeleteBuffers(1, &vbo);
-        glDeleteVertexArrays(1, &vao);
-        return;
-    }
-    
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshIndices.size() * sizeof(unsigned int), meshIndices.data(), GL_STATIC_DRAW);
-    
-    // Set vertex attributes while VAO is bound
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    
-    // Unbind VAO to prevent accidental modification
-    glBindVertexArray(0);
-    
-    // Force synchronization again to ensure commands are processed
-    glFinish();
-    
-    // Check for any OpenGL errors
-    error = glGetError();
-    if (error != GL_NO_ERROR) {
-        std::cerr << "OpenGL error after creating mesh resources for chunk " << position.x << "," << position.z << ": " << error << std::endl; // Keep critical
-        glDeleteBuffers(1, &ebo);
-        glDeleteBuffers(1, &vbo);
-        glDeleteVertexArrays(1, &vao);
-        return;
-    }
-    
-    // Store mesh data for rendering
-    surfaceMesh.VAO = vao;
-    surfaceMesh.VBO = vbo;
-    surfaceMesh.EBO = ebo;
-    surfaceMesh.indexCount = meshIndices.size();
-    
-    // std::cout << "Successfully built mesh for chunk at " << position.x << "," << position.z << " with " << meshIndices.size() / 6 << " faces, VAO=" << surfaceMesh.VAO << std::endl; // Keep commented
-    
-    // Mark as no longer needing rebuild
-    needsRebuild = false;
-}
-
 // Render the pre-built surface mesh using a single draw call
 void Chunk::renderSurface(const glm::mat4& projection, const glm::mat4& view, bool wireframeState) const {
     if (surfaceMesh.indexCount == 0 || surfaceMesh.VAO == 0) {
@@ -328,7 +77,7 @@ void Chunk::renderSurface(const glm::mat4& projection, const glm::mat4& view, bo
     if (Block::shaderProgram == 0) {
         return;
     }
-    while (glGetError() != GL_NO_ERROR) {}
+    while (glGetError() != GL_NO_ERROR) {} // Clear previous OpenGL errors
     
     glUseProgram(Block::shaderProgram);
     
@@ -349,11 +98,10 @@ void Chunk::renderSurface(const glm::mat4& projection, const glm::mat4& view, bo
     if (wireframeState) {
         if (useTextureLoc != -1) glUniform1i(useTextureLoc, 0); // Don't use texture in wireframe
         if (blockColorLoc != -1) {
-            // Use a generic wireframe color, or vary by chunk position for debugging
             float r = (static_cast<int>(position.x) * 0.1f) + 0.2f;
             float g = (static_cast<int>(position.z) * 0.1f) + 0.2f;
             float b = 0.8f;
-            glUniform3f(blockColorLoc, r, g, b); // Blue-ish tint for wireframe
+            glUniform3f(blockColorLoc, r, g, b); 
         }
     } else {
         if (useTextureLoc != -1) {
@@ -375,10 +123,9 @@ void Chunk::renderSurface(const glm::mat4& projection, const glm::mat4& view, bo
     glDrawElements(GL_TRIANGLES, surfaceMesh.indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
     
-    // Check for OpenGL errors after rendering
     GLenum error = glGetError();
     if (error != GL_NO_ERROR) {
-        std::cerr << "OpenGL error after rendering chunk at " << position.x << "," << position.z << ": " << error << std::endl; // Keep critical
+        std::cerr << "OpenGL error after rendering chunk at " << position.x << "," << position.z << ": " << error << std::endl;
     }
 }
 
@@ -389,7 +136,6 @@ void Chunk::renderAllBlocks(const glm::mat4& projection, const glm::mat4& view) 
             for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
                 std::shared_ptr<Block> block = getBlockAtLocal(x, y, z);
                 if (block) {
-                    // Use block's individual render method
                     block->render(projection, view); 
                 }
             }
@@ -397,7 +143,6 @@ void Chunk::renderAllBlocks(const glm::mat4& projection, const glm::mat4& view) 
     }
 }
 
-// Renamed from hasBlockAt
 bool Chunk::hasBlockAtLocal(int x, int y, int z) const {
     if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z) {
         return false;
@@ -405,7 +150,6 @@ bool Chunk::hasBlockAtLocal(int x, int y, int z) const {
     return blocks_[x][y][z] != nullptr;
 }
 
-// Renamed from getBlockAt
 std::shared_ptr<Block> Chunk::getBlockAtLocal(int x, int y, int z) const {
     if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z) {
         return nullptr;
@@ -413,7 +157,6 @@ std::shared_ptr<Block> Chunk::getBlockAtLocal(int x, int y, int z) const {
     return blocks_[x][y][z];
 }
 
-// Renamed from setBlockAt
 void Chunk::setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block) {
     if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z) {
         return;
@@ -422,17 +165,13 @@ void Chunk::setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block) {
         needsRebuild = true;
     }
     blocks_[x][y][z] = block;
-    // Update blockDataForInitialization_ based on whether a block is present
     if (block != nullptr) {
-        // For simplicity, if a block is added manually, default its type to 1 (e.g., stone).
-        // A more advanced system would identify the block type more accurately.
-        blockDataForInitialization_[x][y][z].type = 1; 
+        blockDataForInitialization_[x][y][z].type = 1; // Example: default to stone if added manually
     } else {
         blockDataForInitialization_[x][y][z].type = 0; // Air
     }
 }
 
-// Renamed from removeBlockAt
 void Chunk::removeBlockAtLocal(int x, int y, int z) {
      if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z) {
         return;
@@ -459,11 +198,8 @@ void Chunk::cleanupMesh() {
     }
     surfaceMesh.indexCount = 0;
     
-    // Clear the vertex and index data to free memory
     meshVertices.clear();
     meshIndices.clear();
-    
-    // Force vector capacity to be reduced
     std::vector<float>().swap(meshVertices);
     std::vector<unsigned int>().swap(meshIndices);
 }
@@ -481,7 +217,10 @@ std::string Chunk::getChunkFileName() const {
 }
 
 bool Chunk::saveToFile(const std::string& directoryPath) const {
+    // Ensure directory exists (platform-dependent, POSIX example)
+    // For cross-platform, C++17 <filesystem> is better if available and linked
     mkdir(directoryPath.c_str(), 0755);
+
     std::string filePath = directoryPath + "/" + getChunkFileName();
     std::ofstream outFile(filePath, std::ios::binary);
     if (!outFile.is_open()) {
@@ -492,28 +231,26 @@ bool Chunk::saveToFile(const std::string& directoryPath) const {
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
             for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
-                // Save only the type from blockDataForInitialization_
                 outFile.write(reinterpret_cast<const char*>(&blockDataForInitialization_[x][y][z].type), sizeof(BlockInfo::type));
             }
         }
     }
-    // std::cout << "Saved chunk data (types) to: " << filePath << std::endl; // Can be noisy
     return true;
 }
 
-bool Chunk::loadFromFile_DataOnly(const std::string& directoryPath, World* world) {
+bool Chunk::loadFromFile_DataOnly(const std::string& directoryPath, World* /*world*/) {
     std::string filePath = directoryPath + "/" + getChunkFileName();
     struct stat buffer;
     if (stat(filePath.c_str(), &buffer) != 0) return false; 
+
     std::ifstream inFile(filePath, std::ios::binary | std::ios::ate); 
     if (!inFile.is_open()) {
-        // std::cerr << "Error: Could not open chunk file for reading: " << filePath << std::endl; // Keep commented
         return false;
     }
     std::streamsize size = inFile.tellg();
-    inFile.seekg(0, std::ios::beg); // Go back to the beginning
+    inFile.seekg(0, std::ios::beg);
 
-    constexpr size_t expected_size_per_block = sizeof(BlockInfo::type); // We save only type for now
+    constexpr size_t expected_size_per_block = sizeof(BlockInfo::type);
     constexpr size_t total_expected_bytes = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z * expected_size_per_block;
 
     if (size != total_expected_bytes) {
@@ -521,13 +258,10 @@ bool Chunk::loadFromFile_DataOnly(const std::string& directoryPath, World* world
                   << ". Expected " << total_expected_bytes << " bytes, got " << size << std::endl;
         return false;
     }
-
-    // std::cout << "DataOnly: Loading chunk from file: " << filePath << std::endl; // Keep commented
     
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
             for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
-                // Read only the type for now
                 inFile.read(reinterpret_cast<char*>(&blockDataForInitialization_[x][y][z].type), sizeof(BlockInfo::type));
                 if (inFile.fail()) {
                     std::cerr << "Error reading block data for chunk " << filePath << std::endl;
@@ -540,143 +274,377 @@ bool Chunk::loadFromFile_DataOnly(const std::string& directoryPath, World* world
     return true; 
 }
 
-void Chunk::ensureInitialized(World* world, int seed, const std::string& worldDataPath) {
+void Chunk::ensureInitialized(const World* world, int seed, const std::optional<glm::vec3>& planetCenter, const std::optional<float>& planetRadius) {
     if (isInitialized_) {
         return;
     }
-    // Stage 1: Prepare block data (non-OpenGL part, can run on worker thread)
-    bool wasLoaded = loadFromFile_DataOnly(worldDataPath, world);
-    if (!wasLoaded) {
-        generateTerrain_DataOnly(seed);
-    }
 
-    // Stage 2: Queue OpenGL-dependent initialization to the main thread
-    std::shared_ptr<Chunk> self = shared_from_this();
-    world->addMainThreadTask([self, world, seed, worldDataPath]() { // Pass necessary params
-        self->openglInitialize(world); // openglInitialize will handle its own data loading/generation if needed
-    });
-    // isInitialized_ will be set true at the end of openglInitialize
+    std::optional<glm::vec3> pCenter = planetCenter.has_value() ? planetCenter : planetCenter_;
+    std::optional<float> pRadius = planetRadius.has_value() ? planetRadius : planetRadius_;
+
+    // For now, always generate terrain and build mesh. File loading for planets can be added later.
+    generateTerrain(seed, pCenter, pRadius);
+    // if (world) saveToFile(world->getWorldDataPath()); // Save after generation if world context exists
+
+    buildSurfaceMesh(world, pCenter, pRadius); // This is the single, correct call to the full buildSurfaceMesh
+    isInitialized_ = true;
+    needsRebuild = false;
 }
 
 bool Chunk::isInitialized() const {
     return isInitialized_;
 }
 
-// New: Data-only terrain generation (placeholder implementation)
-void Chunk::generateTerrain_DataOnly(int seed) {
-    // std::cout << "DataOnly: Generating terrain for chunk at " << position.x << "," << position.z << std::endl; // Keep commented
-    std::cout << "DataOnly: Generating terrain for chunk at " << position.x << "," << position.z << std::endl;
+void Chunk::generateTerrain(int /*seed*/, const std::optional<glm::vec3>& pCenterOpt, const std::optional<float>& pRadiusOpt) {
+    std::cout << "Chunk at " << position.x << "," << position.y << "," << position.z << " generateTerrain. Planet context: " << (pCenterOpt.has_value() ? "Yes" : "No") << std::endl;
+
+    if (blockDataForInitialization_.empty() || blockDataForInitialization_.size() != CHUNK_SIZE_X ) { 
+        blockDataForInitialization_.resize(CHUNK_SIZE_X,
+                                 std::vector<std::vector<BlockInfo>>(
+                                     CHUNK_SIZE_Y,
+                                     std::vector<BlockInfo>(CHUNK_SIZE_Z)));
+    }
+    if (blocks_.empty() || blocks_.size() != CHUNK_SIZE_X) { 
+        blocks_.resize(CHUNK_SIZE_X, std::vector<std::vector<std::shared_ptr<Block>>>(
+                               CHUNK_SIZE_Y, std::vector<std::shared_ptr<Block>>(
+                                             CHUNK_SIZE_Z, nullptr)));
+    }
+
+    if (!pCenterOpt.has_value() || !pRadiusOpt.has_value()) {
+        // Fallback to original flat terrain generation logic
+        std::cout << "Generating flat terrain for chunk at (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
     std::vector<int> heightMap(CHUNK_SIZE_X * CHUNK_SIZE_Z);
-    for (int x = 0; x < CHUNK_SIZE_X; x++) {
-        for (int z = 0; z < CHUNK_SIZE_Z; z++) {
-            int worldX = static_cast<int>(position.x) + x;
-            int worldZ = static_cast<int>(position.z) + z;
-            float heightNoise = simpleNoise(worldX, 0, worldZ, seed);
-            int terrainHeight = static_cast<int>(CHUNK_SIZE_Y / 2 + heightNoise * (CHUNK_SIZE_Y / 4));
+        for (int x_local = 0; x_local < CHUNK_SIZE_X; x_local++) {
+            for (int z_local = 0; z_local < CHUNK_SIZE_Z; z_local++) {
+                int worldX = static_cast<int>(position.x) + x_local;
+                int worldZ = static_cast<int>(position.z) + z_local;
+                float heightNoise = glm::simplex(glm::vec2(worldX * 0.01f, worldZ * 0.01f));
+                int terrainHeight = static_cast<int>(CHUNK_SIZE_Y / 2.0f + heightNoise * (CHUNK_SIZE_Y / 4.0f));
             terrainHeight = std::max(1, std::min(CHUNK_SIZE_Y - 1, terrainHeight));
-            heightMap[x * CHUNK_SIZE_Z + z] = terrainHeight;
+                heightMap[x_local * CHUNK_SIZE_Z + z_local] = terrainHeight;
         }
     }
 
-    for (int x = 0; x < CHUNK_SIZE_X; x++) {
-        for (int z = 0; z < CHUNK_SIZE_Z; z++) {
-            int terrainHeight = heightMap[x * CHUNK_SIZE_Z + z];
-            for (int y = 0; y < CHUNK_SIZE_Y; y++) {
-                if (y < terrainHeight - 1) { // Stone
-                    blockDataForInitialization_[x][y][z].type = 1; // 1 for stone
-                } else if (y == terrainHeight - 1) { // Grass
-                    blockDataForInitialization_[x][y][z].type = 2; // 2 for grass
-                } else { // Air
-                    blockDataForInitialization_[x][y][z].type = 0; // 0 for air
+        for (int x_local = 0; x_local < CHUNK_SIZE_X; ++x_local) {
+            for (int z_local = 0; z_local < CHUNK_SIZE_Z; ++z_local) {
+                int terrainHeight = heightMap[x_local * CHUNK_SIZE_Z + z_local];
+                for (int y_local = 0; y_local < CHUNK_SIZE_Y; ++y_local) {
+                    glm::vec3 blockWorldPos = position + glm::vec3(x_local, y_local, z_local);
+                    if (y_local < terrainHeight -1) { // Stone
+                        blocks_[x_local][y_local][z_local] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f), 1.0f);
+                        blockDataForInitialization_[x_local][y_local][z_local].type = 1;
+                    } else if (y_local == terrainHeight -1 ) { // Grass on top
+                        blocks_[x_local][y_local][z_local] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.2f, 0.8f, 0.2f), 1.0f);
+                        blockDataForInitialization_[x_local][y_local][z_local].type = 2;
+                    } else {
+                        blocks_[x_local][y_local][z_local] = nullptr; // Air
+                        blockDataForInitialization_[x_local][y_local][z_local].type = 0;
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    // Spherical generation logic
+    const glm::vec3& planetCenter = pCenterOpt.value();
+    const float planetRadius = pRadiusOpt.value();
+    std::cout << "Generating spherical terrain for chunk. Planet R: " << planetRadius << " Center: (" << planetCenter.x << "," << planetCenter.y << "," << planetCenter.z << ")" << std::endl;
+
+    for (int x_local = 0; x_local < CHUNK_SIZE_X; ++x_local) {
+        for (int y_local = 0; y_local < CHUNK_SIZE_Y; ++y_local) {
+            for (int z_local = 0; z_local < CHUNK_SIZE_Z; ++z_local) {
+                glm::vec3 blockWorldPos = position + glm::vec3(x_local + 0.5f, y_local + 0.5f, z_local + 0.5f); 
+                float distToPlanetCenter = glm::length(blockWorldPos - planetCenter);
+
+                unsigned char blockType = 0; // Default to air
+                if (distToPlanetCenter <= planetRadius) {
+                    if (distToPlanetCenter > planetRadius - 1.5f) { 
+                        blockType = 2; // Grass
+                    } else if (distToPlanetCenter > planetRadius - 5.0f) { 
+                        blockType = 3; // Dirt
+                    } else {
+                        blockType = 1; // Stone
+                    }
+                }
+
+                blockDataForInitialization_[x_local][y_local][z_local].type = blockType;
+                if (blockType != 0) {
+                    blocks_[x_local][y_local][z_local] = std::make_shared<Block>(position + glm::vec3(x_local,y_local,z_local), glm::vec3(0.5f), 1.0f); // Color is placeholder
+                } else {
+                    blocks_[x_local][y_local][z_local] = nullptr; 
                 }
             }
         }
     }
-    needsRebuild = true;
 }
 
-// New: OpenGL-dependent initialization (runs on main thread - placeholder implementation)
-void Chunk::openglInitialize(World* world) {
-    if (isInitialized_) return;
+// This is the single, complete definition of buildSurfaceMesh
+void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::vec3>& pCenterOpt, const std::optional<float>& pRadiusOpt) {
+    cleanupMesh(); 
+    meshVertices.clear();
+    meshIndices.clear();
+    unsigned int vertexIndexOffset = 0;
 
-    // Ensure an OpenGL context is current on THIS thread
-    if (glfwGetCurrentContext() == nullptr) {
-        std::cerr << "CRITICAL ERROR: No OpenGL context current on main thread for openglInitialize! Chunk: " 
-                  << position.x << "," << position.z << std::endl; // Keep critical
-        return; // Cannot proceed
+    if (blockDataForInitialization_.empty() || blockDataForInitialization_.size() != CHUNK_SIZE_X ) { 
+        blockDataForInitialization_.resize(CHUNK_SIZE_X,
+                                 std::vector<std::vector<BlockInfo>>(
+                                     CHUNK_SIZE_Y,
+                                     std::vector<BlockInfo>(CHUNK_SIZE_Z)));
     }
 
-    // std::cout << "MainThread: OpenGL-Initializing chunk at " << position.x << "," << position.z << std::endl; // Keep commented
-    std::cout << "MainThread: OpenGL-Initializing chunk at " << position.x << "," << position.z << std::endl;
-    
+    const int neighborOffsets[6][3] = {
+        {0, 0, -1}, {0, 0, 1}, {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}
+    };
+
+    if (!pCenterOpt.has_value() || !pRadiusOpt.has_value()) {
+        // Fallback to original flat terrain meshing logic
+        std::cout << "Building flat mesh for chunk at (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+        for (int x_local = 0; x_local < CHUNK_SIZE_X; ++x_local) {
+            for (int y_local = 0; y_local < CHUNK_SIZE_Y; ++y_local) {
+                for (int z_local = 0; z_local < CHUNK_SIZE_Z; ++z_local) {
+                    if (!hasBlockAtLocal(x_local, y_local, z_local)) continue;
+
+                    for (int face = 0; face < 6; ++face) {
+                        int nx = x_local + neighborOffsets[face][0];
+                        int ny = y_local + neighborOffsets[face][1];
+                        int nz = z_local + neighborOffsets[face][2];
+                        bool shouldRenderFace = false;
+
+                        if (nx < 0 || nx >= CHUNK_SIZE_X || ny < 0 || ny >= CHUNK_SIZE_Y || nz < 0 || nz >= CHUNK_SIZE_Z) {
+                            // Neighbor is outside this chunk. 
+                            // Original logic used world->worldToChunkCoords and world->getChunkAt.
+                            // Since these are commented out in World.h, we'll default to rendering the face.
+                            // A more complete flat-world implementation would require these or similar functions.
+                            shouldRenderFace = true; 
+                        } else {
+                            // Neighbor is within this chunk
+                            shouldRenderFace = !hasBlockAtLocal(nx, ny, nz);
+                        }
+
+                        if (shouldRenderFace) {
+                            unsigned char blockType = blockDataForInitialization_[x_local][y_local][z_local].type;
+                            float uvPixelOffsetX = 0.0f, uvPixelOffsetY = 0.0f;
+                            if (blockType == 1) { uvPixelOffsetX = 0.0f; uvPixelOffsetY = 0.0f; } // Stone
+                            else if (blockType == 2) { uvPixelOffsetX = 80.0f; uvPixelOffsetY = 0.0f; } // Grass
+                            else if (blockType == 3) { uvPixelOffsetX = 160.0f; uvPixelOffsetY = 0.0f; } // Dirt
+
+                            for (int i = 0; i < 4; ++i) {
+                                meshVertices.push_back(x_local + faceVertices[face][i][0]);
+                                meshVertices.push_back(y_local + faceVertices[face][i][1]);
+                                meshVertices.push_back(z_local + faceVertices[face][i][2]);
+                                if (Block::spritesheetLoaded && Block::spritesheetTexture.getWidth() > 0) {
+                                    meshVertices.push_back((uvPixelOffsetX + texCoords[i].x * 80.0f) / Block::spritesheetTexture.getWidth());
+                                    meshVertices.push_back((uvPixelOffsetY + texCoords[i].y * 80.0f) / Block::spritesheetTexture.getHeight());
+                                } else {
+                                    meshVertices.push_back(texCoords[i].x); // Fallback UVs
+                                    meshVertices.push_back(texCoords[i].y);
+            }
+        }
+                            meshIndices.push_back(vertexIndexOffset + 0); meshIndices.push_back(vertexIndexOffset + 1); meshIndices.push_back(vertexIndexOffset + 2);
+                            meshIndices.push_back(vertexIndexOffset + 2); meshIndices.push_back(vertexIndexOffset + 3); meshIndices.push_back(vertexIndexOffset + 0);
+                            vertexIndexOffset += 4;
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Spherical mesh generation logic
+        const glm::vec3& planetCenter = pCenterOpt.value();
+        const float planetRadius = pRadiusOpt.value();
+        std::cout << "Building spherical mesh for chunk. Planet R: " << planetRadius << " Chunk Pos: (" << position.x << "," << position.y << "," << position.z << ")" << std::endl;
+
+        for (int x_loc = 0; x_loc < CHUNK_SIZE_X; ++x_loc) {
+            for (int y_loc = 0; y_loc < CHUNK_SIZE_Y; ++y_loc) {
+                for (int z_loc = 0; z_loc < CHUNK_SIZE_Z; ++z_loc) {
+                    if (!hasBlockAtLocal(x_loc, y_loc, z_loc)) continue;
+
+                    for (int face = 0; face < 6; ++face) {
+                        // Check neighbor block for culling
+                        int nx_loc = x_loc + neighborOffsets[face][0];
+                        int ny_loc = y_loc + neighborOffsets[face][1];
+                        int nz_loc = z_loc + neighborOffsets[face][2];
+
+                        bool shouldRenderFace = false;
+                        if (nx_loc < 0 || nx_loc >= CHUNK_SIZE_X || ny_loc < 0 || ny_loc >= CHUNK_SIZE_Y || nz_loc < 0 || nz_loc >= CHUNK_SIZE_Z) {
+                            // Neighbor is outside this chunk.
+                            glm::vec3 neighborBlockWorldCenter = position + glm::vec3(nx_loc + 0.5f, ny_loc + 0.5f, nz_loc + 0.5f);
+                            if (glm::length(neighborBlockWorldCenter - planetCenter) > planetRadius) {
+                                shouldRenderFace = true; // Neighbor is outside planet, so current block's face is visible.
+                            } else {
+                                // Neighbor is inside planet radius but in another chunk.
+                                // This is complex. A robust solution needs checking the actual block in the adjacent planetary chunk.
+                                // For now, to avoid gaps at chunk boundaries on the sphere, we'll assume the face is visible.
+                                // This might render some internal faces between planet chunks but is safer than holes.
+                                shouldRenderFace = true; 
+                            }
+                        } else {
+                            // Neighbor is within this chunk
+                            shouldRenderFace = !hasBlockAtLocal(nx_loc, ny_loc, nz_loc);
+                        }
+
+                        if (shouldRenderFace) {
+                            unsigned char blockType = blockDataForInitialization_[x_loc][y_loc][z_loc].type;
+                            float uvPixelOffsetX = 0.0f, uvPixelOffsetY = 0.0f;
+                            if (blockType == 1) { uvPixelOffsetX = 0.0f; uvPixelOffsetY = 0.0f; } 
+                            else if (blockType == 2) { uvPixelOffsetX = 80.0f; uvPixelOffsetY = 0.0f; } 
+                            else if (blockType == 3) { uvPixelOffsetX = 160.0f; uvPixelOffsetY = 0.0f; }
+
+                            for (int i = 0; i < 4; ++i) {
+                                glm::vec3 localFaceVertexPos = glm::vec3(x_loc + faceVertices[face][i][0],
+                                                                   y_loc + faceVertices[face][i][1],
+                                                                   z_loc + faceVertices[face][i][2]);
+                                glm::vec3 vboVertexPos = localFaceVertexPos; // Vertices are already local to chunk origin
+
+                                meshVertices.push_back(vboVertexPos.x);
+                                meshVertices.push_back(vboVertexPos.y);
+                                meshVertices.push_back(vboVertexPos.z);
+
+                                if (Block::spritesheetLoaded && Block::spritesheetTexture.getWidth() > 0) {
+                                    meshVertices.push_back((uvPixelOffsetX + texCoords[i].x * 80.0f) / Block::spritesheetTexture.getWidth());
+                                    meshVertices.push_back((uvPixelOffsetY + texCoords[i].y * 80.0f) / Block::spritesheetTexture.getHeight());
+                                } else {
+                                    meshVertices.push_back(texCoords[i].x);
+                                    meshVertices.push_back(texCoords[i].y);
+                                }
+                            }
+                            meshIndices.push_back(vertexIndexOffset + 0); meshIndices.push_back(vertexIndexOffset + 1); meshIndices.push_back(vertexIndexOffset + 2);
+                            meshIndices.push_back(vertexIndexOffset + 2); meshIndices.push_back(vertexIndexOffset + 3); meshIndices.push_back(vertexIndexOffset + 0);
+                            vertexIndexOffset += 4;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (meshVertices.empty()) {
+        surfaceMesh.indexCount = 0;
+        surfaceMesh.VAO = 0;
+        needsRebuild = false; 
+        return;
+    }
+
     if (Block::shaderProgram == 0) {
-        // std::cout << "MainThread: Initializing block shader program..." << std::endl; // Keep console cleaner
+        std::cout << "BuildSurfaceMesh: Initializing block shader..." << std::endl;
         Block::InitBlockShader();
         if (Block::shaderProgram == 0) {
-            std::cerr << "CRITICAL ERROR: Failed to initialize block shader program! Cannot initialize chunk." << std::endl; // Keep critical
+            std::cerr << "CRITICAL ERROR: Failed to init block shader in BuildSurfaceMesh." << std::endl;
             return;
         }
     }
-    // Ensure global spritesheet is loaded (it should be by main, but check is safe)
+    while (glGetError() != GL_NO_ERROR) {} 
+
+    glGenVertexArrays(1, &surfaceMesh.VAO);
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR || surfaceMesh.VAO == 0) {
+        std::cerr << "CRITICAL ERROR: Failed to generate VAO for chunk. OpenGL error: " << error << " VAO ID: " << surfaceMesh.VAO << std::endl;
+        surfaceMesh.VAO = 0; 
+        return;
+    }
+    glBindVertexArray(surfaceMesh.VAO);
+
+    glGenBuffers(1, &surfaceMesh.VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, surfaceMesh.VBO);
+    glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_STATIC_DRAW);
+
+    glGenBuffers(1, &surfaceMesh.EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, surfaceMesh.EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshIndices.size() * sizeof(unsigned int), meshIndices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0); 
+    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    error = glGetError();
+    if (error != GL_NO_ERROR) {
+        std::cerr << "OpenGL error after creating mesh resources for chunk: " << error << std::endl;
+        cleanupMesh(); 
+        return;
+    }
+    surfaceMesh.indexCount = meshIndices.size();
+    needsRebuild = false;
+    std::cout << "Mesh built for chunk. Faces: " << surfaceMesh.indexCount / 6 << ", VAO: " << surfaceMesh.VAO << std::endl;
+}
+
+void Chunk::openglInitialize(World* world) {
+    if (isInitialized_ && surfaceMesh.VAO != 0) return; // Already GL initialized
+
+    if (glfwGetCurrentContext() == nullptr) {
+        std::cerr << "CRITICAL ERROR: No OpenGL context current on main thread for openglInitialize! Chunk: " 
+                  << position.x << "," << position.z << std::endl;
+        return;
+    }
+
+    std::cout << "MainThread: OpenGL-Initializing chunk at " << position.x << "," << position.z << std::endl;
+    
+    if (Block::shaderProgram == 0) {
+        Block::InitBlockShader();
+        if (Block::shaderProgram == 0) {
+            std::cerr << "CRITICAL ERROR: Failed to initialize block shader program! Cannot initialize chunk." << std::endl;
+            return;
+        }
+    }
     if (!Block::spritesheetLoaded) { 
-        // std::cout << "MainThread: Attempting to initialize global spritesheet from openglInitialize..." << std::endl;
-        Block::InitSpritesheet("res/textures/Spritesheet.PNG");
+        Block::InitSpritesheet("res/textures/Spritesheet.PNG"); // Path from executable location
         if (!Block::spritesheetLoaded) {
-            std::cerr << "CRITICAL ERROR: Failed to load global spritesheet in openglInitialize! Chunk texturing might fail." << std::endl; // Keep critical
+            std::cerr << "CRITICAL ERROR: Failed to load global spritesheet in openglInitialize! Chunk texturing might fail." << std::endl;
         }
     }
 
-    // Populate `this->blocks_` using `this->blockDataForInitialization_`
-    // No need to load individual textures for blocks here, as the chunk mesh uses the global atlas.
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
             for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
                 BlockInfo info = blockDataForInitialization_[x][y][z];
                 glm::vec3 blockWorldPos = this->position + glm::vec3(x, y, z);
                 
-                if (info.type == 1) { // Stone
-                    auto block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f, 0.5f, 0.5f), 1.0f); 
-                    this->blocks_[x][y][z] = block;
-                } else if (info.type == 2) { // Grass
-                    auto block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.2f, 0.8f, 0.2f), 1.0f); 
-                    this->blocks_[x][y][z] = block;
-                } else { // Air (type 0 or other)
-                    this->blocks_[x][y][z] = nullptr;
+                if (info.type != 0 && blocks_[x][y][z] == nullptr) { 
+                    if (info.type == 1) { 
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f, 0.5f, 0.5f), 1.0f); 
+                    } else if (info.type == 2) { 
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.2f, 0.8f, 0.2f), 1.0f);
+                    } else if (info.type == 3) { 
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.6f, 0.4f, 0.2f), 1.0f);
+                    }
+                } else if (info.type == 0 && blocks_[x][y][z] != nullptr) { 
+                    blocks_[x][y][z] = nullptr;
                 }
             }
         }
     }
 
-    if (needsRebuild) {
-        // std::cout << "MainThread: Building surface mesh for chunk " << position.x << "," << position.z << std::endl; // Keep commented
-        std::cout << "MainThread: Building surface mesh for chunk " << position.x << "," << position.z << std::endl;
-        buildSurfaceMesh(world); 
+    if (needsRebuild || surfaceMesh.VAO == 0) { 
+        std::cout << "MainThread: Building surface mesh for chunk " << position.x << "," << position.z << " during openglInitialize" << std::endl;
+        if (planetCenter_.has_value() && planetRadius_.has_value()) {
+            buildSurfaceMesh(world, planetCenter_, planetRadius_); // world can be null here, but spherical meshing might not use it extensively
+        } else {
+            // For flat chunks, world context is more critical for neighbor checks.
+            // If world is null, buildSurfaceMesh for flat chunks might operate with limitations (e.g., render all boundary faces).
+            buildSurfaceMesh(world, std::nullopt, std::nullopt); 
+        }
     }
     
-    // Save the fully initialized chunk state (block types) to disk AFTER successful GL init
-    // This ensures that if GL init fails, we don't save corrupted state.
-    saveToFile(world->getWorldDataPath()); 
+    if (world) { // Check if world is not null before calling save
+       // saveToFile(world->getWorldDataPath()); // Save is currently commented out, but guard it anyway for the future
+    }
 
     isInitialized_ = true;
-    needsRebuild = false; // Mesh has been built (or attempted)
-    // std::cout << "Chunk at " << position.x << "," << position.z << " OpenGL-initialized. VAO=" << surfaceMesh.VAO << std::endl; // Keep commented
+    needsRebuild = false; 
     std::cout << "Chunk at " << position.x << "," << position.z << " OpenGL-initialized. VAO=" << surfaceMesh.VAO << std::endl;
 }
 
-
-// ... (buildSurfaceMesh, renderSurface, and other existing methods) ...
-// Remember to make renderSurface const as per header file.
-
-// Original generateTerrain() and loadFromFile() should be removed or fully commented out
-// to avoid confusion with the _DataOnly versions.
-
-/* Commenting out old generateTerrain
-void Chunk::generateTerrain(int seed) { ... old implementation ... }
-*/
-
-/* Commenting out old loadFromFile
-bool Chunk::loadFromFile(const std::string& directoryPath, const World* world) { ... old implementation ... }
-*/
+void Chunk::setPlanetContext(const glm::vec3& planetCenter, float planetRadius) {
+    planetCenter_ = planetCenter;
+    planetRadius_ = planetRadius;
+    isInitialized_ = false; // Re-initialization will be needed
+    needsRebuild = true; 
+}
 
 
 

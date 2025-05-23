@@ -54,33 +54,25 @@ bool Block::spritesheetLoaded = false;
 
 // Helper function for compiling/linking (can be static inside .cpp)
 // Moved from Block class to be a static helper here, or part of InitBlockShader
+/*
 static void checkShaderCompileErrors(unsigned int shader, std::string type) {
-    int success;
-    char infoLog[1024]; 
-    memset(infoLog, 0, sizeof(infoLog)); 
-
+    GLint success;
+    GLchar infoLog[1024];
     if (type != "PROGRAM") {
-        if (shader == 0) {
-            std::cerr << "ERROR::SHADER::CHECK_COMPILE_ERRORS Invalid shader ID 0 for type " << type << std::endl;
-            return;
-        }
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
         if (!success) {
-            glGetShaderInfoLog(shader, sizeof(infoLog) - 1, NULL, infoLog);
-            std::cerr << "ERROR::SHADER::" << type << "::COMPILATION_FAILED\n" << infoLog << std::endl;
+            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+            std::cerr << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
         }
-    } else { // "PROGRAM"
-        if (shader == 0) {
-            std::cerr << "ERROR::SHADER::CHECK_COMPILE_ERRORS Invalid program ID 0 for type PROGRAM" << std::endl;
-            return;
-        }
+    } else {
         glGetProgramiv(shader, GL_LINK_STATUS, &success);
         if (!success) {
-            glGetProgramInfoLog(shader, sizeof(infoLog) - 1, NULL, infoLog);
-            std::cerr << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << std::endl;
+            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+            std::cerr << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
         }
     }
 }
+*/
 
 void Block::InitBlockShader() {
     if (Block::shaderProgram != 0) {

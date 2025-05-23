@@ -6,9 +6,8 @@ Window* Window::currentWindow = nullptr;
 
 // Constructor that creates a new GLFW window
 Window::Window(int width, int height, const std::string& title)
-    : width(width), height(height), title(title), window(nullptr),
-      lastX(width / 2.0), lastY(height / 2.0), xOffset(0.0), yOffset(0.0), firstMouse(true),
-      wireframeMode(false) {
+    : window(nullptr), width(width), height(height), title(title), wireframeMode(false),
+      lastX(static_cast<double>(width) / 2.0), lastY(static_cast<double>(height) / 2.0), xOffset(0.0), yOffset(0.0), firstMouse(true) {
     
     // Initialize GLFW
     if (!glfwInit()) {
@@ -44,9 +43,8 @@ Window::Window(int width, int height, const std::string& title)
 
 // New constructor that uses an existing GLFWwindow
 Window::Window(GLFWwindow* existingWindow, int width, int height)
-    : width(width), height(height), title("AzureVoxel"), window(existingWindow),
-      lastX(width / 2.0), lastY(height / 2.0), xOffset(0.0), yOffset(0.0), firstMouse(true),
-      wireframeMode(false) {
+    : window(existingWindow), width(width), height(height), title("AzureVoxel"), wireframeMode(false),
+      lastX(static_cast<double>(width) / 2.0), lastY(static_cast<double>(height) / 2.0), xOffset(0.0), yOffset(0.0), firstMouse(true) {
     
     // The window is already created, just make sure we have the callbacks set
     if (!window) {
@@ -107,6 +105,8 @@ void Window::enableMouseCapture(bool enable) {
 void Window::getMouseOffset(double& x, double& y) {
     x = xOffset;
     y = yOffset;
+    xOffset = 0.0; // Reset after reading
+    yOffset = 0.0; // Reset after reading
 }
 
 void Window::resetMouseOffset() {
@@ -114,11 +114,11 @@ void Window::resetMouseOffset() {
     yOffset = 0.0;
 }
 
-void Window::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
+void Window::framebufferSizeCallback(GLFWwindow* /*window*/, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+void Window::keyCallback(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/) {
     // Close window on escape
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
@@ -130,7 +130,7 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int action, 
     }
 }
 
-void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos) {
+void Window::mouseCallback(GLFWwindow* /*window*/, double xpos, double ypos) {
     if (!currentWindow) return;
     
     if (currentWindow->firstMouse) {

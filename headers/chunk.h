@@ -7,6 +7,7 @@
 #include <GL/glew.h>
 #include "block.h"
 #include "shader.h"
+#include <optional> // For optional planet context
 
 // Constants for chunk dimensions
 constexpr int CHUNK_SIZE_X = 16;
@@ -43,7 +44,7 @@ private:
     // Flag to indicate if chunk mesh needs to be rebuilt
     bool needsRebuild;
     
-    bool isInitialized_; // Tracks if ensureInitialized has run
+    bool isInitialized_ = false;
     
     // Mesh data for rendering visible faces
     ChunkMesh surfaceMesh;
@@ -52,11 +53,15 @@ private:
     std::vector<float> meshVertices;
     std::vector<unsigned int> meshIndices;
     
+    // Planet context (optional)
+    std::optional<glm::vec3> planetCenter_;
+    std::optional<float> planetRadius_;
+    
     // Check if a block exists at local chunk coordinates
     bool hasBlockAtLocal(int x, int y, int z) const;
     
     // Build the surface mesh for the chunk
-    void buildSurfaceMesh(const World* world);
+    void buildSurfaceMesh(const World* world, const std::optional<glm::vec3>& planetCenter, const std::optional<float>& planetRadius);
     
     // Helper to add a face to the mesh data vectors
     void addFace(const glm::vec3& corner, const glm::vec3& side1, const glm::vec3& side2, 
@@ -65,9 +70,6 @@ private:
 
     // Helper to generate the chunk's filename for saving/loading
     std::string getChunkFileName() const;
-
-    // New method for OpenGL-dependent initialization (called by main thread)
-    void openglInitialize(World* world);
 
     // Data-only preparation methods (called by worker thread)
     void prepareBlockData(World* world, int seed, const std::string& worldDataPath);
@@ -85,10 +87,10 @@ public:
     void init(const World* world);
     
     // Generate terrain for the chunk (fills the entire chunk with blocks)
-    void generateTerrain(int seed);
+    void generateTerrain(int seed, const std::optional<glm::vec3>& planetCenter, const std::optional<float>& planetRadius);
 
     // Ensure the chunk is initialized (loaded or generated and meshed)
-    void ensureInitialized(World* world, int seed, const std::string& worldDataPath);
+    void ensureInitialized(const World* world, int seed, const std::optional<glm::vec3>& planetCenter = std::nullopt, const std::optional<float>& planetRadius = std::nullopt);
 
     // Check if the chunk has been initialized
     bool isInitialized() const;
@@ -122,4 +124,12 @@ public:
     bool saveToFile(const std::string& directoryPath) const;
     // loadFromFile is effectively replaced by _DataOnly and openglInitialize phases
     // bool loadFromFile(const std::string& directoryPath, const World* world);
+
+    // Method to set planet context
+    void setPlanetContext(const glm::vec3& planetCenter, float planetRadius);
+
+    GLuint getSurfaceMeshVAO() const { return surfaceMesh.VAO; }
+
+    // OpenGL-specific initialization, should be called from the main thread.
+    void openglInitialize(World* world);
 };

@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <memory>
-#include <unordered_map>
 #include <glm/glm.hpp>
 #include <thread>
 #include <mutex>
@@ -13,99 +12,59 @@
 #include "chunk.h"
 #include "camera.h"
 #include "block.h"
-
-// Hash function for glm::ivec2 to use in unordered_map
-struct IVec2Hash {
-    size_t operator()(const glm::ivec2& key) const {
-        return std::hash<int>()(key.x) ^ (std::hash<int>()(key.y) << 1);
-    }
-};
-
-// Required for std::set<glm::ivec2>
-struct IVec2Compare {
-    bool operator()(const glm::ivec2& a, const glm::ivec2& b) const {
-        if (a.x != b.x) {
-            return a.x < b.x;
-        }
-        return a.y < b.y;
-    }
-};
+#include "planet.h"
+#include <string>
 
 class World {
+public:
+    // Constructor might change to not take renderDistance for flat chunks, or adapt it for planets
+    World(const std::string& worldName = "MyWorld", int defaultSeed = 12345);
+    ~World();
+
+    void addPlanet(const glm::vec3& position, float radius, int seed, const std::string& name);
+    void update(const Camera& camera);
+    void render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera, bool wireframeState);
+
+    // getBlockAtWorldPos will now iterate through planets
+    std::shared_ptr<Block> getBlockAtWorldPos(const glm::vec3& worldPos) const;
+
+    // Potentially remove or adapt: getChunkAt, worldToChunkCoords if they are specific to flat world structure
+    // For planet-specific chunk access, one might go through Planet::getBlockAtWorldPos or a similar Planet method.
+    // std::shared_ptr<Chunk> getChunkAt(int chunkX, int chunkZ); // Might be deprecated or changed
+    // glm::ivec2 worldToChunkCoords(const glm::vec3& worldPos) const; // Might be deprecated or changed
+
+    // Worker thread and task queue for chunk initialization (can be kept for planet chunks)
+    void addMainThreadTask(const std::function<void()>& task);
+    void processMainThreadTasks();
+    const std::string& getWorldDataPath() const { return worldDataPath_; }
+
+    // Threading: Add tasks to queues
+    void addTaskToWorker(const std::function<void()>& task);
+
 private:
-    // Map of chunk positions to chunks
-    std::unordered_map<glm::ivec2, std::shared_ptr<Chunk>, IVec2Hash> chunks;
-    
-    // Maximum number of chunks to render in each direction (e.g., 3 means a 7x7 grid of chunks will be rendered)
-    int renderDistance;
-    
-    // Size of each chunk in world units
-    const int chunkSize = 16; // Must match CHUNK_SIZE_X/Z from chunk.h
-    
-    // Seed for world generation
-    int worldSeed_;
-    // Path for saving/loading chunk data
+    std::vector<std::shared_ptr<Planet>> planets_;
+    std::string worldName_;
     std::string worldDataPath_;
-    
-    // Threading support for chunk generation
+    int defaultSeed_;
+
+    // Worker thread components (can remain similar for initializing chunks within planets)
     std::thread workerThread_;
     std::mutex queueMutex_;
     std::condition_variable queueCondition_;
     std::queue<std::function<void()>> taskQueue_;
     std::atomic<bool> shouldTerminate_;
-    
-    // Worker thread function to process chunk generation tasks
-    void workerThreadFunction();
-    
-    // Add a task to the queue
-    void addTask(const std::function<void()>& task);
 
-    // Save all loaded chunks to files
-    void saveAllChunks() const;
-
-    // Main thread tasks
+    // Main thread task queue (for OpenGL calls, etc.)
     std::queue<std::function<void()>> mainThreadTasks_;
     std::mutex mainThreadTasksMutex_;
 
-public:
-    // Constructor
-    World(int renderDistance = 3);
+    void workerThreadFunction();
     
-    // Destructor
-    ~World();
-    
-    // Initialize the world with a grid of chunks (REMOVED - world is loaded dynamically)
-    // void init(int gridSize = 5); 
-    
-    // Update active chunks based on camera position (dynamic loading/unloading)
-    void update(const Camera& camera);
-    
-    // Render visible chunks around the camera
-    void render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera, bool wireframeState);
-    
-    // Get chunk at the given CHUNK coordinates (if it exists)
-    std::shared_ptr<Chunk> getChunkAt(int chunkX, int chunkZ);
-    
-    // Add a new chunk at the given CHUNK coordinates
-    void addChunk(int chunkX, int chunkZ);
-    
-    // Convert world position to chunk coordinates
-    glm::ivec2 worldToChunkCoords(const glm::vec3& worldPos) const;
-    
-    // Get block at specific WORLD coordinates (can cross chunk boundaries)
-    std::shared_ptr<Block> getBlockAtWorldPos(int worldX, int worldY, int worldZ) const;
-    std::shared_ptr<Block> getBlockAtWorldPos(const glm::vec3& worldPos) const {
-        return getBlockAtWorldPos(static_cast<int>(std::floor(worldPos.x)), 
-                                  static_cast<int>(std::floor(worldPos.y)), 
-                                  static_cast<int>(std::floor(worldPos.z)));
-    }
+    // void saveAllChunks() const; // This would now be saveAllPlanets or similar
+    void createWorldDirectories();
 
-    // Add a task to the main thread queue
-    void addMainThreadTask(const std::function<void()>& task);
-
-    // Process tasks from the main thread queue
-    void processMainThreadTasks();
-
-    // Getter for worldDataPath_
-    const std::string& getWorldDataPath() const { return worldDataPath_; }
+    // Remove members specific to flat chunk management, e.g.:
+    // std::unordered_map<glm::ivec2, std::shared_ptr<Chunk>, IVec2Hash> chunks;
+    // int renderDistance; 
+    // const int chunkSize; 
 }; 

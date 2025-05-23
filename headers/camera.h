@@ -9,14 +9,16 @@ class Camera {
 private:
     // Camera vectors
     glm::vec3 position;
+    glm::vec3 worldUp;
+    
+    // Euler angles (declared before vectors that depend on them)
+    float yaw;
+    float pitch;
+
+    // Camera vectors (calculated from yaw/pitch)
     glm::vec3 front;
     glm::vec3 up;
     glm::vec3 right;
-    glm::vec3 worldUp;
-    
-    // Euler angles
-    float yaw;
-    float pitch;
     
     // Camera options
     float movementSpeed;

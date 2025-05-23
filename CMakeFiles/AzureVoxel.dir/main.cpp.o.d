@@ -357,13 +357,19 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: \
  /usr/include/c++/13/bits/quoted_string.h /usr/include/c++/13/sstream \
  /usr/include/c++/13/bits/sstream.tcc \
  /home/alexd/Desktop/Projects/AzureVoxel/headers/window.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/shader.h \
+ /usr/include/c++/13/fstream \
+ /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
+ /usr/include/x86_64-linux-gnu/c++/13/bits/c++io.h \
+ /usr/include/c++/13/bits/fstream.tcc \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/texture.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/camera.h \
  /home/alexd/Desktop/Projects/AzureVoxel/headers/block.h \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/stl_uninitialized.h \
  /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \
- /usr/include/c++/13/bits/vector.tcc \
- /home/alexd/Desktop/Projects/AzureVoxel/headers/texture.h \
- /usr/include/c++/13/memory /usr/include/c++/13/bits/stl_tempbuf.h \
+ /usr/include/c++/13/bits/vector.tcc /usr/include/c++/13/memory \
+ /usr/include/c++/13/bits/stl_tempbuf.h \
  /usr/include/c++/13/bits/stl_raw_storage_iter.h \
  /usr/include/c++/13/bits/align.h /usr/include/c++/13/bits/unique_ptr.h \
  /usr/include/c++/13/bits/shared_ptr.h \
@@ -377,16 +383,8 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: \
  /usr/include/c++/13/backward/auto_ptr.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/alexd/Desktop/Projects/AzureVoxel/headers/camera.h \
  /home/alexd/Desktop/Projects/AzureVoxel/headers/world.h \
- /usr/include/c++/13/unordered_map \
- /usr/include/c++/13/bits/unordered_map.h \
- /usr/include/c++/13/bits/hashtable.h \
- /usr/include/c++/13/bits/hashtable_policy.h \
- /usr/include/c++/13/bits/enable_special_members.h \
- /usr/include/c++/13/bits/node_handle.h \
- /usr/include/c++/13/bits/erase_if.h /usr/include/c++/13/thread \
- /usr/include/c++/13/bits/std_thread.h \
+ /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
  /usr/include/c++/13/bits/this_thread_sleep.h \
  /usr/include/c++/13/bits/chrono.h /usr/include/c++/13/ratio \
  /usr/include/c++/13/bits/parse_numbers.h /usr/include/c++/13/mutex \
@@ -395,15 +393,22 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: \
  /usr/include/c++/13/deque /usr/include/c++/13/bits/stl_deque.h \
  /usr/include/c++/13/bits/deque.tcc /usr/include/c++/13/bits/stl_heap.h \
  /usr/include/c++/13/bits/stl_queue.h /usr/include/c++/13/functional \
- /usr/include/c++/13/bits/std_function.h /usr/include/c++/13/array \
+ /usr/include/c++/13/bits/std_function.h \
+ /usr/include/c++/13/unordered_map \
+ /usr/include/c++/13/bits/unordered_map.h \
+ /usr/include/c++/13/bits/hashtable.h \
+ /usr/include/c++/13/bits/hashtable_policy.h \
+ /usr/include/c++/13/bits/enable_special_members.h \
+ /usr/include/c++/13/bits/node_handle.h \
+ /usr/include/c++/13/bits/erase_if.h /usr/include/c++/13/array \
  /usr/include/c++/13/compare /usr/include/c++/13/bits/stl_algo.h \
  /usr/include/c++/13/bits/algorithmfwd.h \
  /usr/include/c++/13/bits/uniform_int_dist.h \
  /usr/include/c++/13/condition_variable /usr/include/c++/13/atomic \
  /home/alexd/Desktop/Projects/AzureVoxel/headers/chunk.h \
- /home/alexd/Desktop/Projects/AzureVoxel/headers/shader.h \
- /usr/include/c++/13/fstream \
- /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
- /usr/include/x86_64-linux-gnu/c++/13/bits/c++io.h \
- /usr/include/c++/13/bits/fstream.tcc \
+ /usr/include/c++/13/optional \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/planet.h \
+ /usr/include/glm/gtx/hash.hpp /usr/include/glm/gtx/dual_quaternion.hpp \
+ /usr/include/glm/gtx/dual_quaternion.inl /usr/include/glm/gtx/hash.inl \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/planet.h \
  /home/alexd/Desktop/Projects/AzureVoxel/headers/crosshair.h
