@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
+// #include <glm/gtx/hash.hpp> // Removed as we are using a custom hash for ivec3
 #include <thread>
 #include <mutex>
 #include <queue>

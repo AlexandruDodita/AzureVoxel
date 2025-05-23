@@ -363,41 +363,6 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: \
  /usr/include/c++/13/optional \
  /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/camera.h \
  /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/planet.h \
- /usr/include/glm/gtx/hash.hpp /usr/include/glm/gtc/vec1.hpp \
- /usr/include/glm/ext/vector_bool1.hpp \
- /usr/include/glm/ext/vector_bool1_precision.hpp \
- /usr/include/glm/ext/vector_float1.hpp \
- /usr/include/glm/ext/vector_float1_precision.hpp \
- /usr/include/glm/ext/vector_double1.hpp \
- /usr/include/glm/ext/vector_double1_precision.hpp \
- /usr/include/glm/ext/vector_int1.hpp \
- /usr/include/glm/ext/vector_int1_sized.hpp \
- /usr/include/glm/ext/vector_uint1.hpp \
- /usr/include/glm/ext/vector_uint1_sized.hpp \
- /usr/include/glm/gtc/quaternion.hpp \
- /usr/include/glm/ext/vector_relational.hpp \
- /usr/include/glm/ext/vector_relational.inl \
- /usr/include/glm/detail/type_float.hpp \
- /usr/include/glm/ext/quaternion_common.hpp \
- /usr/include/glm/ext/quaternion_geometric.hpp \
- /usr/include/glm/ext/quaternion_geometric.inl \
- /usr/include/glm/ext/quaternion_common.inl \
- /usr/include/glm/ext/quaternion_float.hpp \
- /usr/include/glm/detail/type_quat.hpp \
- /usr/include/glm/ext/quaternion_relational.hpp \
- /usr/include/glm/ext/quaternion_relational.inl \
- /usr/include/glm/detail/type_quat.inl \
- /usr/include/glm/ext/quaternion_float_precision.hpp \
- /usr/include/glm/ext/quaternion_double.hpp \
- /usr/include/glm/ext/quaternion_double_precision.hpp \
- /usr/include/glm/ext/quaternion_trigonometric.hpp \
- /usr/include/glm/ext/quaternion_trigonometric.inl \
- /usr/include/glm/ext/quaternion_transform.hpp \
- /usr/include/glm/ext/quaternion_transform.inl \
- /usr/include/glm/gtc/quaternion.inl /usr/include/glm/gtc/epsilon.hpp \
- /usr/include/glm/detail/setup.hpp /usr/include/glm/gtc/epsilon.inl \
- /usr/include/glm/gtx/dual_quaternion.hpp \
- /usr/include/glm/gtx/dual_quaternion.inl /usr/include/glm/gtx/hash.inl \
  /usr/include/c++/13/algorithm \
  /usr/include/c++/13/pstl/glue_algorithm_defs.h \
  /usr/include/x86_64-linux-gnu/sys/stat.h \

@@ -408,7 +408,5 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: \
  /home/alexd/Desktop/Projects/AzureVoxel/headers/chunk.h \
  /usr/include/c++/13/optional \
  /home/alexd/Desktop/Projects/AzureVoxel/headers/planet.h \
- /usr/include/glm/gtx/hash.hpp /usr/include/glm/gtx/dual_quaternion.hpp \
- /usr/include/glm/gtx/dual_quaternion.inl /usr/include/glm/gtx/hash.inl \
  /home/alexd/Desktop/Projects/AzureVoxel/headers/planet.h \
  /home/alexd/Desktop/Projects/AzureVoxel/headers/crosshair.h
