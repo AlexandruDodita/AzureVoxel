@@ -75,7 +75,7 @@ int main() {
     glCullFace(GL_BACK);
 
     // Create Camera
-    camera = new Camera(glm::vec3(0.0f, 0.0f, 150.0f)); // Start further out to see a planet (e.g. radius 50 at origin)
+    camera = new Camera(glm::vec3(0.0f, 0.0f, 0.0f)); // Start at planet center to see water core
     camera->setMovementSpeed(50.0f); // Increase speed for planetary scale
 
     // Create World

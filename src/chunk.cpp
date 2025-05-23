@@ -1,5 +1,6 @@
 #include "../headers/chunk.h"
 #include "../headers/world.h" // Include World header for neighbor checks
+#include "../headers/block.h" // Include Block header for Block::isTypeSolid()
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -350,7 +351,7 @@ void Chunk::generateTerrain(int seed, const std::optional<glm::vec3>& pCenterOpt
     const glm::vec3& planetCenter = pCenterOpt.value();
     const float planetRadius = pRadiusOpt.value();
     std::cout << "Generating spherical terrain for chunk. Planet R: " << planetRadius << " Center: (" << planetCenter.x << "," << planetCenter.y << "," << planetCenter.z << ")" << std::endl;
-
+    
     // Noise parameters for variety
     float materialNoiseScale = 0.05f; // Controls the size of material patches
     float elevationNoiseScale = 0.02f; // Controls variation in "surface" height
@@ -405,23 +406,15 @@ void Chunk::generateTerrain(int seed, const std::optional<glm::vec3>& pCenterOpt
                         }
                     }
 
-                    // Simple water level - if block y is below a certain threshold relative to planet surface
-                    // This is a very basic way to do water level for a sphere.
-                    // Let's say water level is at 70% of the main planetRadius.
-                    // This interacts with the terrain height, so it might fill valleys.
-                    float waterLevelRadius = planetRadius * 0.7f;
-                    if (distToPlanetCenter < waterLevelRadius && effectivePlanetRadius > waterLevelRadius) { // Only if terrain is above water level but this block is below
-                         // Only place water if the "current" effective surface is above the water level,
-                         // and this specific block's distance to center is below the water level.
-                         // This attempts to fill depressions up to waterLevelRadius.
-                        if (blockWorldPos.y < (position.y + (waterLevelRadius - (position.y - planetCenter.y))) ) { // crude global Y check
-                             // If the current block is below the global water level and also within the "scooped out" part of the planet.
-                            if (distToPlanetCenter < waterLevelRadius) { // Only if within main water sphere
-                                blockType = 5; // Water
-                            }
-                        }
+                    // Simple water level - place water in areas where terrain is "carved out" below water level
+                    float waterLevelRadius = planetRadius * 0.7f; // Water level at 70% of planet radius
+                    
+                    // If this block is solid (from above logic) but is within the water level,
+                    // and the original sphere would be hollow here, place water instead
+                    if (distToPlanetCenter <= waterLevelRadius) {
+                        // If we're within the water level, override with water
+                        blockType = 5; // Water
                     }
-
 
                 }
 

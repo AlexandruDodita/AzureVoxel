@@ -368,3 +368,69 @@ Defines the `Block` class, representing an individual voxel.
 ### `src/block.cpp` in `src/`
 Implementation of the `Block` class.
 *   `Block::isTypeSolid(unsigned char blockType)`: Implemented with a switch statement. Currently, Air (0), Water (5), and Leaves (8) are defined as non-solid. All other types default to solid.
+
+---
+
+## Non-Solid Block Rendering System
+
+### Overview
+The AzureVoxel engine implements a sophisticated non-solid block rendering system that allows players to see through transparent or non-solid blocks like water, air, and leaves. This system ensures that faces of solid blocks are properly rendered when they are adjacent to non-solid blocks, creating realistic visibility through water bodies and other transparent materials.
+
+### Block Solidity Classification
+The system classifies blocks into solid and non-solid categories using the `Block::isTypeSolid()` static method:
+
+**Non-Solid Blocks:**
+- Air (type 0) - Empty space
+- Water (type 5) - Liquid blocks in planet cores and water bodies  
+- Leaves (type 8) - Tree foliage (transparent)
+
+**Solid Blocks:**
+- Stone (type 1) - Basic rock material
+- Grass (type 2) - Surface grass blocks
+- Dirt (type 3) - Subsurface soil
+- Sand (type 4) - Desert/beach material
+- Snow (type 6) - Cold climate surface
+- Wood Log (type 7) - Tree trunks
+- Gravel (type 9) - Rocky debris
+- Gold Ore (type 10) - Precious metal deposits
+
+### Face Culling Logic
+The mesh building system in `Chunk::buildSurfaceMesh()` implements intelligent face culling:
+
+1. **Neighbor Check**: For each block face, the system checks the adjacent block type
+2. **Solidity Test**: Uses `Block::isTypeSolid(neighborBlockType)` to determine if the neighbor is solid
+3. **Render Decision**: If the neighbor is non-solid, the face is included in the mesh for rendering
+4. **Performance**: Only necessary faces are rendered, maintaining optimal performance
+
+### Water Core System
+Planets generate with realistic water cores using the following system:
+- **Water Level**: Set at 70% of planet radius for realistic proportions
+- **Core Generation**: Water blocks (type 5) are placed in the inner sphere
+- **Visibility**: Solid blocks adjacent to water have their faces rendered, allowing players to see the water through cave systems and underground areas
+- **Texture Mapping**: Water blocks use proper UV coordinates from the spritesheet (position 4,0)
+
+### Implementation Details
+The non-solid rendering system is implemented across multiple components:
+
+**In `src/block.cpp`:**
+```cpp
+bool Block::isTypeSolid(unsigned char blockType) {
+    return !(blockType == 0 || blockType == 5 || blockType == 8);
+}
+```
+
+**In `src/chunk.cpp` mesh building:**
+```cpp
+if (!Block::isTypeSolid(neighborBlockType)) {
+    shouldRenderFace = true; // Render face next to non-solid block
+}
+```
+
+### Visual Results
+This system creates several important visual effects:
+- **Underground Water Visibility**: Players can see water cores through cave openings
+- **Realistic Transparency**: Water and air don't block visibility of solid surfaces
+- **Performance Optimization**: Hidden faces between solid blocks are culled
+- **Immersive Exploration**: Players can explore underwater areas and see surrounding terrain
+
+The non-solid block rendering system is fully functional and enhances the visual realism of the voxel world by properly handling transparency and visibility through different material types.
