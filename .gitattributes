@@ -1,0 +1,23 @@
+# Ignore makefiles and cmake files from language detection
+Makefile linguist-vendored
+makefile linguist-vendored
+*.cmake linguist-vendored
+CMakeLists.txt linguist-vendored
+CMakeCache.txt linguist-vendored
+cmake_install.cmake linguist-vendored
+**/CMakeFiles/** linguist-vendored
+
+# Common build directories
+build/ linguist-vendored
+Build/ linguist-vendored
+cmake-build-*/ linguist-vendored
+
+# Generated makefiles
+*.make linguist-vendored
+*.mk linguist-vendored
+
+# Build output directories
+**/build/** linguist-vendored
+**/Build/** linguist-vendored
+**/cmake-build-debug/** linguist-vendored
+**/cmake-build-release/** linguist-vendored
