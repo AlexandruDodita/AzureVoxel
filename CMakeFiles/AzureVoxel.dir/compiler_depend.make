@@ -360,10 +360,6 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: main.cpp \
   /usr/include/glm/gtc/type_ptr.hpp \
   /usr/include/glm/gtc/type_ptr.inl \
   /usr/include/glm/gtc/vec1.hpp \
-  /usr/include/glm/gtx/dual_quaternion.hpp \
-  /usr/include/glm/gtx/dual_quaternion.inl \
-  /usr/include/glm/gtx/hash.hpp \
-  /usr/include/glm/gtx/hash.inl \
   /usr/include/glm/integer.hpp \
   /usr/include/glm/mat2x2.hpp \
   /usr/include/glm/mat2x3.hpp \
@@ -1707,10 +1703,6 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: src/chunk.cpp \
   /usr/include/glm/gtc/type_ptr.hpp \
   /usr/include/glm/gtc/type_ptr.inl \
   /usr/include/glm/gtc/vec1.hpp \
-  /usr/include/glm/gtx/dual_quaternion.hpp \
-  /usr/include/glm/gtx/dual_quaternion.inl \
-  /usr/include/glm/gtx/hash.hpp \
-  /usr/include/glm/gtx/hash.inl \
   /usr/include/glm/integer.hpp \
   /usr/include/glm/mat2x2.hpp \
   /usr/include/glm/mat2x3.hpp \
@@ -2457,7 +2449,6 @@ CMakeFiles/AzureVoxel.dir/src/planet.cpp.o: src/planet.cpp \
   /usr/include/glm/detail/func_vector_relational.inl \
   /usr/include/glm/detail/qualifier.hpp \
   /usr/include/glm/detail/setup.hpp \
-  /usr/include/glm/detail/type_float.hpp \
   /usr/include/glm/detail/type_half.hpp \
   /usr/include/glm/detail/type_half.inl \
   /usr/include/glm/detail/type_mat2x2.hpp \
@@ -2478,8 +2469,6 @@ CMakeFiles/AzureVoxel.dir/src/planet.cpp.o: src/planet.cpp \
   /usr/include/glm/detail/type_mat4x3.inl \
   /usr/include/glm/detail/type_mat4x4.hpp \
   /usr/include/glm/detail/type_mat4x4.inl \
-  /usr/include/glm/detail/type_quat.hpp \
-  /usr/include/glm/detail/type_quat.inl \
   /usr/include/glm/detail/type_vec1.hpp \
   /usr/include/glm/detail/type_vec1.inl \
   /usr/include/glm/detail/type_vec2.hpp \
@@ -2531,60 +2520,34 @@ CMakeFiles/AzureVoxel.dir/src/planet.cpp.o: src/planet.cpp \
   /usr/include/glm/ext/matrix_projection.inl \
   /usr/include/glm/ext/matrix_transform.hpp \
   /usr/include/glm/ext/matrix_transform.inl \
-  /usr/include/glm/ext/quaternion_common.hpp \
-  /usr/include/glm/ext/quaternion_common.inl \
-  /usr/include/glm/ext/quaternion_double.hpp \
-  /usr/include/glm/ext/quaternion_double_precision.hpp \
-  /usr/include/glm/ext/quaternion_float.hpp \
-  /usr/include/glm/ext/quaternion_float_precision.hpp \
-  /usr/include/glm/ext/quaternion_geometric.hpp \
-  /usr/include/glm/ext/quaternion_geometric.inl \
-  /usr/include/glm/ext/quaternion_relational.hpp \
-  /usr/include/glm/ext/quaternion_relational.inl \
-  /usr/include/glm/ext/quaternion_transform.hpp \
-  /usr/include/glm/ext/quaternion_transform.inl \
-  /usr/include/glm/ext/quaternion_trigonometric.hpp \
-  /usr/include/glm/ext/quaternion_trigonometric.inl \
   /usr/include/glm/ext/scalar_constants.hpp \
   /usr/include/glm/ext/scalar_constants.inl \
   /usr/include/glm/ext/scalar_int_sized.hpp \
   /usr/include/glm/ext/scalar_uint_sized.hpp \
-  /usr/include/glm/ext/vector_bool1.hpp \
-  /usr/include/glm/ext/vector_bool1_precision.hpp \
   /usr/include/glm/ext/vector_bool2.hpp \
   /usr/include/glm/ext/vector_bool2_precision.hpp \
   /usr/include/glm/ext/vector_bool3.hpp \
   /usr/include/glm/ext/vector_bool3_precision.hpp \
   /usr/include/glm/ext/vector_bool4.hpp \
   /usr/include/glm/ext/vector_bool4_precision.hpp \
-  /usr/include/glm/ext/vector_double1.hpp \
-  /usr/include/glm/ext/vector_double1_precision.hpp \
   /usr/include/glm/ext/vector_double2.hpp \
   /usr/include/glm/ext/vector_double2_precision.hpp \
   /usr/include/glm/ext/vector_double3.hpp \
   /usr/include/glm/ext/vector_double3_precision.hpp \
   /usr/include/glm/ext/vector_double4.hpp \
   /usr/include/glm/ext/vector_double4_precision.hpp \
-  /usr/include/glm/ext/vector_float1.hpp \
-  /usr/include/glm/ext/vector_float1_precision.hpp \
   /usr/include/glm/ext/vector_float2.hpp \
   /usr/include/glm/ext/vector_float2_precision.hpp \
   /usr/include/glm/ext/vector_float3.hpp \
   /usr/include/glm/ext/vector_float3_precision.hpp \
   /usr/include/glm/ext/vector_float4.hpp \
   /usr/include/glm/ext/vector_float4_precision.hpp \
-  /usr/include/glm/ext/vector_int1.hpp \
-  /usr/include/glm/ext/vector_int1_sized.hpp \
   /usr/include/glm/ext/vector_int2.hpp \
   /usr/include/glm/ext/vector_int2_sized.hpp \
   /usr/include/glm/ext/vector_int3.hpp \
   /usr/include/glm/ext/vector_int3_sized.hpp \
   /usr/include/glm/ext/vector_int4.hpp \
   /usr/include/glm/ext/vector_int4_sized.hpp \
-  /usr/include/glm/ext/vector_relational.hpp \
-  /usr/include/glm/ext/vector_relational.inl \
-  /usr/include/glm/ext/vector_uint1.hpp \
-  /usr/include/glm/ext/vector_uint1_sized.hpp \
   /usr/include/glm/ext/vector_uint2.hpp \
   /usr/include/glm/ext/vector_uint2_sized.hpp \
   /usr/include/glm/ext/vector_uint3.hpp \
@@ -2596,17 +2559,8 @@ CMakeFiles/AzureVoxel.dir/src/planet.cpp.o: src/planet.cpp \
   /usr/include/glm/glm.hpp \
   /usr/include/glm/gtc/constants.hpp \
   /usr/include/glm/gtc/constants.inl \
-  /usr/include/glm/gtc/epsilon.hpp \
-  /usr/include/glm/gtc/epsilon.inl \
   /usr/include/glm/gtc/matrix_transform.hpp \
   /usr/include/glm/gtc/matrix_transform.inl \
-  /usr/include/glm/gtc/quaternion.hpp \
-  /usr/include/glm/gtc/quaternion.inl \
-  /usr/include/glm/gtc/vec1.hpp \
-  /usr/include/glm/gtx/dual_quaternion.hpp \
-  /usr/include/glm/gtx/dual_quaternion.inl \
-  /usr/include/glm/gtx/hash.hpp \
-  /usr/include/glm/gtx/hash.inl \
   /usr/include/glm/integer.hpp \
   /usr/include/glm/mat2x2.hpp \
   /usr/include/glm/mat2x3.hpp \
@@ -3861,7 +3815,6 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: src/world.cpp \
   /usr/include/glm/detail/func_vector_relational.inl \
   /usr/include/glm/detail/qualifier.hpp \
   /usr/include/glm/detail/setup.hpp \
-  /usr/include/glm/detail/type_float.hpp \
   /usr/include/glm/detail/type_half.hpp \
   /usr/include/glm/detail/type_half.inl \
   /usr/include/glm/detail/type_mat2x2.hpp \
@@ -3882,8 +3835,6 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: src/world.cpp \
   /usr/include/glm/detail/type_mat4x3.inl \
   /usr/include/glm/detail/type_mat4x4.hpp \
   /usr/include/glm/detail/type_mat4x4.inl \
-  /usr/include/glm/detail/type_quat.hpp \
-  /usr/include/glm/detail/type_quat.inl \
   /usr/include/glm/detail/type_vec1.hpp \
   /usr/include/glm/detail/type_vec1.inl \
   /usr/include/glm/detail/type_vec2.hpp \
@@ -3935,60 +3886,34 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: src/world.cpp \
   /usr/include/glm/ext/matrix_projection.inl \
   /usr/include/glm/ext/matrix_transform.hpp \
   /usr/include/glm/ext/matrix_transform.inl \
-  /usr/include/glm/ext/quaternion_common.hpp \
-  /usr/include/glm/ext/quaternion_common.inl \
-  /usr/include/glm/ext/quaternion_double.hpp \
-  /usr/include/glm/ext/quaternion_double_precision.hpp \
-  /usr/include/glm/ext/quaternion_float.hpp \
-  /usr/include/glm/ext/quaternion_float_precision.hpp \
-  /usr/include/glm/ext/quaternion_geometric.hpp \
-  /usr/include/glm/ext/quaternion_geometric.inl \
-  /usr/include/glm/ext/quaternion_relational.hpp \
-  /usr/include/glm/ext/quaternion_relational.inl \
-  /usr/include/glm/ext/quaternion_transform.hpp \
-  /usr/include/glm/ext/quaternion_transform.inl \
-  /usr/include/glm/ext/quaternion_trigonometric.hpp \
-  /usr/include/glm/ext/quaternion_trigonometric.inl \
   /usr/include/glm/ext/scalar_constants.hpp \
   /usr/include/glm/ext/scalar_constants.inl \
   /usr/include/glm/ext/scalar_int_sized.hpp \
   /usr/include/glm/ext/scalar_uint_sized.hpp \
-  /usr/include/glm/ext/vector_bool1.hpp \
-  /usr/include/glm/ext/vector_bool1_precision.hpp \
   /usr/include/glm/ext/vector_bool2.hpp \
   /usr/include/glm/ext/vector_bool2_precision.hpp \
   /usr/include/glm/ext/vector_bool3.hpp \
   /usr/include/glm/ext/vector_bool3_precision.hpp \
   /usr/include/glm/ext/vector_bool4.hpp \
   /usr/include/glm/ext/vector_bool4_precision.hpp \
-  /usr/include/glm/ext/vector_double1.hpp \
-  /usr/include/glm/ext/vector_double1_precision.hpp \
   /usr/include/glm/ext/vector_double2.hpp \
   /usr/include/glm/ext/vector_double2_precision.hpp \
   /usr/include/glm/ext/vector_double3.hpp \
   /usr/include/glm/ext/vector_double3_precision.hpp \
   /usr/include/glm/ext/vector_double4.hpp \
   /usr/include/glm/ext/vector_double4_precision.hpp \
-  /usr/include/glm/ext/vector_float1.hpp \
-  /usr/include/glm/ext/vector_float1_precision.hpp \
   /usr/include/glm/ext/vector_float2.hpp \
   /usr/include/glm/ext/vector_float2_precision.hpp \
   /usr/include/glm/ext/vector_float3.hpp \
   /usr/include/glm/ext/vector_float3_precision.hpp \
   /usr/include/glm/ext/vector_float4.hpp \
   /usr/include/glm/ext/vector_float4_precision.hpp \
-  /usr/include/glm/ext/vector_int1.hpp \
-  /usr/include/glm/ext/vector_int1_sized.hpp \
   /usr/include/glm/ext/vector_int2.hpp \
   /usr/include/glm/ext/vector_int2_sized.hpp \
   /usr/include/glm/ext/vector_int3.hpp \
   /usr/include/glm/ext/vector_int3_sized.hpp \
   /usr/include/glm/ext/vector_int4.hpp \
   /usr/include/glm/ext/vector_int4_sized.hpp \
-  /usr/include/glm/ext/vector_relational.hpp \
-  /usr/include/glm/ext/vector_relational.inl \
-  /usr/include/glm/ext/vector_uint1.hpp \
-  /usr/include/glm/ext/vector_uint1_sized.hpp \
   /usr/include/glm/ext/vector_uint2.hpp \
   /usr/include/glm/ext/vector_uint2_sized.hpp \
   /usr/include/glm/ext/vector_uint3.hpp \
@@ -4000,17 +3925,8 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: src/world.cpp \
   /usr/include/glm/glm.hpp \
   /usr/include/glm/gtc/constants.hpp \
   /usr/include/glm/gtc/constants.inl \
-  /usr/include/glm/gtc/epsilon.hpp \
-  /usr/include/glm/gtc/epsilon.inl \
   /usr/include/glm/gtc/matrix_transform.hpp \
   /usr/include/glm/gtc/matrix_transform.inl \
-  /usr/include/glm/gtc/quaternion.hpp \
-  /usr/include/glm/gtc/quaternion.inl \
-  /usr/include/glm/gtc/vec1.hpp \
-  /usr/include/glm/gtx/dual_quaternion.hpp \
-  /usr/include/glm/gtx/dual_quaternion.inl \
-  /usr/include/glm/gtx/hash.hpp \
-  /usr/include/glm/gtx/hash.inl \
   /usr/include/glm/integer.hpp \
   /usr/include/glm/mat2x2.hpp \
   /usr/include/glm/mat2x3.hpp \
@@ -4170,12 +4086,6 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: src/world.cpp \
 
 /usr/include/c++/13/bits/stl_multiset.h:
 
-/usr/lib/gcc/x86_64-linux-gnu/13/include/xmmintrin.h:
-
-/usr/include/c++/13/algorithm:
-
-/usr/lib/gcc/x86_64-linux-gnu/13/include/mm_malloc.h:
-
 /usr/include/glm/ext/matrix_double4x3.hpp:
 
 /usr/include/glm/ext/matrix_double2x4.hpp:
@@ -4245,8 +4155,6 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: src/world.cpp \
 /usr/include/glm/detail/type_half.inl:
 
 /usr/include/c++/13/bits/shared_ptr.h:
-
-/usr/include/glm/gtx/dual_quaternion.hpp:
 
 /usr/include/glm/detail/type_float.hpp:
 
@@ -4335,10 +4243,6 @@ CMakeFiles/AzureVoxel.dir/src/world.cpp.o: src/world.cpp \
 /usr/include/x86_64-linux-gnu/bits/local_lim.h:
 
 /usr/include/c++/13/initializer_list:
-
-/usr/lib/gcc/x86_64-linux-gnu/13/include/mmintrin.h:
-
-/usr/include/c++/13/tr1/bessel_function.tcc:
 
 /usr/include/c++/13/bits/std_thread.h:
 
@@ -4555,6 +4459,8 @@ headers/block.h:
 headers/window.h:
 
 /usr/include/c++/13/fstream:
+
+/usr/lib/gcc/x86_64-linux-gnu/13/include/xmmintrin.h:
 
 /usr/include/c++/13/bits/stl_pair.h:
 
@@ -4806,8 +4712,6 @@ headers/texture.h:
 
 /usr/include/glm/ext/matrix_float2x3.hpp:
 
-/usr/include/glm/gtx/hash.inl:
-
 /usr/include/glm/ext/matrix_float2x3_precision.hpp:
 
 /usr/include/glm/detail/compute_vector_relational.hpp:
@@ -4916,8 +4820,6 @@ headers/texture.h:
 
 /usr/include/glm/ext/vector_relational.hpp:
 
-/usr/include/glm/gtx/hash.hpp:
-
 /usr/include/glm/ext/vector_float3.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
@@ -4925,12 +4827,6 @@ headers/texture.h:
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
 
 /usr/include/glm/ext/vector_float4_precision.hpp:
-
-src/window.cpp:
-
-/usr/include/c++/13/bits/erase_if.h:
-
-/usr/include/x86_64-linux-gnu/gnu/stubs.h:
 
 headers/world.h:
 
@@ -4993,8 +4889,6 @@ headers/world.h:
 /usr/include/pthread.h:
 
 /usr/include/glm/gtc/type_ptr.hpp:
-
-/usr/include/glm/gtx/dual_quaternion.inl:
 
 /usr/include/glm/detail/func_trigonometric.inl:
 
@@ -5212,6 +5106,12 @@ src/chunk.cpp:
 
 /usr/include/asm-generic/int-ll64.h:
 
+/usr/include/c++/13/bits/erase_if.h:
+
+/usr/include/x86_64-linux-gnu/gnu/stubs.h:
+
+src/window.cpp:
+
 /usr/include/asm-generic/posix_types.h:
 
 /usr/include/c++/13/chrono:
@@ -5267,3 +5167,11 @@ src/shader.cpp:
 src/texture.cpp:
 
 /usr/include/c++/13/stdlib.h:
+
+/usr/include/c++/13/algorithm:
+
+/usr/lib/gcc/x86_64-linux-gnu/13/include/mm_malloc.h:
+
+/usr/include/c++/13/tr1/bessel_function.tcc:
+
+/usr/lib/gcc/x86_64-linux-gnu/13/include/mmintrin.h:

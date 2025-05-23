@@ -413,3 +413,15 @@ void Block::InitSpritesheet(const std::string& path) {
         Block::spritesheetLoaded = false; 
     }
 }
+
+// New static method to check if a block type is solid
+bool Block::isTypeSolid(unsigned char blockType) {
+    switch (blockType) {
+        case 0:  // Air
+        case 5:  // Water
+        case 8:  // Leaves (assuming leaves are non-solid for rendering through)
+            return false;
+        default:
+            return true; // All other types are considered solid
+    }
+}

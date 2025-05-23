@@ -37,6 +37,7 @@ public:
     static void InitSpritesheet(const std::string& path);
     // Static method to clean up the shared shader program
     static void CleanupBlockShader();
+    static bool isTypeSolid(unsigned char blockType); // Added for generic solidity check
 
     Block(const glm::vec3& position, const glm::vec3& color = glm::vec3(0.5f), float size = 1.0f);
     ~Block();
@@ -67,4 +68,7 @@ public:
     void useBlockShader() const; 
     void bindBlockTexture() const; 
     void setShaderUniforms(const glm::mat4& projection, const glm::mat4& view, const glm::mat4& model) const; 
+
+    bool isTransparent() const; 
+    bool isLightSource() const; 
 };

@@ -295,7 +295,7 @@ bool Chunk::isInitialized() const {
     return isInitialized_;
 }
 
-void Chunk::generateTerrain(int /*seed*/, const std::optional<glm::vec3>& pCenterOpt, const std::optional<float>& pRadiusOpt) {
+void Chunk::generateTerrain(int seed, const std::optional<glm::vec3>& pCenterOpt, const std::optional<float>& pRadiusOpt) {
     std::cout << "Chunk at " << position.x << "," << position.y << "," << position.z << " generateTerrain. Planet context: " << (pCenterOpt.has_value() ? "Yes" : "No") << std::endl;
 
     if (blockDataForInitialization_.empty() || blockDataForInitialization_.size() != CHUNK_SIZE_X ) { 
@@ -351,26 +351,83 @@ void Chunk::generateTerrain(int /*seed*/, const std::optional<glm::vec3>& pCente
     const float planetRadius = pRadiusOpt.value();
     std::cout << "Generating spherical terrain for chunk. Planet R: " << planetRadius << " Center: (" << planetCenter.x << "," << planetCenter.y << "," << planetCenter.z << ")" << std::endl;
 
+    // Noise parameters for variety
+    float materialNoiseScale = 0.05f; // Controls the size of material patches
+    float elevationNoiseScale = 0.02f; // Controls variation in "surface" height
+    float oreNoiseScale = 0.1f; // For ore patches
+
     for (int x_local = 0; x_local < CHUNK_SIZE_X; ++x_local) {
         for (int y_local = 0; y_local < CHUNK_SIZE_Y; ++y_local) {
             for (int z_local = 0; z_local < CHUNK_SIZE_Z; ++z_local) {
-                glm::vec3 blockWorldPos = position + glm::vec3(x_local + 0.5f, y_local + 0.5f, z_local + 0.5f); 
+                glm::vec3 blockLocalPos = glm::vec3(x_local + 0.5f, y_local + 0.5f, z_local + 0.5f);
+                glm::vec3 blockWorldPos = position + blockLocalPos; 
                 float distToPlanetCenter = glm::length(blockWorldPos - planetCenter);
 
                 unsigned char blockType = 0; // Default to air
-                if (distToPlanetCenter <= planetRadius) {
-                    if (distToPlanetCenter > planetRadius - 1.5f) { 
-                        blockType = 2; // Grass
-                    } else if (distToPlanetCenter > planetRadius - 5.0f) { 
-                        blockType = 3; // Dirt
-                    } else {
-                        blockType = 1; // Stone
+
+                // Determine a slightly varied "surface" radius using noise
+                float elevationNoise = glm::simplex(glm::vec2(blockWorldPos.x * elevationNoiseScale, blockWorldPos.z * elevationNoiseScale) + glm::vec2(seed * 0.1f, seed * -0.1f));
+                float effectivePlanetRadius = planetRadius + elevationNoise * 2.0f; // +/- 2 blocks height variation
+
+                if (distToPlanetCenter <= effectivePlanetRadius) {
+                    // Base material is stone
+                    blockType = 1; // Stone
+
+                    // Determine surface/sub-surface materials based on depth from the *effective* surface
+                    float depth = effectivePlanetRadius - distToPlanetCenter;
+
+                    // Material noise for biome-like variations
+                    float materialNoiseVal = glm::simplex(glm::vec3(blockWorldPos * materialNoiseScale + glm::vec3(seed * 0.3f)));
+
+                    if (depth < 1.5f) { // Top layer
+                        if (materialNoiseVal < -0.3f) {
+                            blockType = 6; // Snow (cold areas)
+                        } else if (materialNoiseVal < 0.2f) {
+                            blockType = 2; // Grass
+                        } else {
+                            blockType = 4; // Sand (hot/dry areas)
+                        }
+                    } else if (depth < 5.0f) { // Sub-surface layer
+                         if (materialNoiseVal < -0.3f && blockType != 6) { // Avoid dirt under snow directly
+                            blockType = 9; // Gravel (under cold areas if not snow)
+                        } else if (materialNoiseVal < 0.2f) {
+                            blockType = 3; // Dirt
+                        } else { // Under sand, can still be dirt or more stone
+                            blockType = 3; // Dirt (or could be more stone/sandstone if defined)
+                        }
                     }
+                    
+                    // Occasionally, place ores deeper down
+                    if (depth > 5.0f) {
+                        float oreNoiseVal = glm::simplex(blockWorldPos * oreNoiseScale + glm::vec3(seed * 0.7f));
+                        if (oreNoiseVal > 0.75f) { // Adjust threshold for rarity
+                            blockType = 10; // Gold Ore
+                        }
+                    }
+
+                    // Simple water level - if block y is below a certain threshold relative to planet surface
+                    // This is a very basic way to do water level for a sphere.
+                    // Let's say water level is at 70% of the main planetRadius.
+                    // This interacts with the terrain height, so it might fill valleys.
+                    float waterLevelRadius = planetRadius * 0.7f;
+                    if (distToPlanetCenter < waterLevelRadius && effectivePlanetRadius > waterLevelRadius) { // Only if terrain is above water level but this block is below
+                         // Only place water if the "current" effective surface is above the water level,
+                         // and this specific block's distance to center is below the water level.
+                         // This attempts to fill depressions up to waterLevelRadius.
+                        if (blockWorldPos.y < (position.y + (waterLevelRadius - (position.y - planetCenter.y))) ) { // crude global Y check
+                             // If the current block is below the global water level and also within the "scooped out" part of the planet.
+                            if (distToPlanetCenter < waterLevelRadius) { // Only if within main water sphere
+                                blockType = 5; // Water
+                            }
+                        }
+                    }
+
+
                 }
 
                 blockDataForInitialization_[x_local][y_local][z_local].type = blockType;
                 if (blockType != 0) {
-                    blocks_[x_local][y_local][z_local] = std::make_shared<Block>(position + glm::vec3(x_local,y_local,z_local), glm::vec3(0.5f), 1.0f); // Color is placeholder
+                    blocks_[x_local][y_local][z_local] = std::make_shared<Block>(position + glm::vec3(x_local,y_local,z_local), glm::vec3(0.5f), 1.0f);
                 } else {
                     blocks_[x_local][y_local][z_local] = nullptr; 
                 }
@@ -411,23 +468,33 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
                         int nz = z_local + neighborOffsets[face][2];
                         bool shouldRenderFace = false;
 
+                        unsigned char currentBlockType = blockDataForInitialization_[x_local][y_local][z_local].type;
+                        if (currentBlockType == 0) continue; // Should not happen if hasBlockAtLocal was true, but defensive
+
                         if (nx < 0 || nx >= CHUNK_SIZE_X || ny < 0 || ny >= CHUNK_SIZE_Y || nz < 0 || nz >= CHUNK_SIZE_Z) {
-                            // Neighbor is outside this chunk. 
-                            // Original logic used world->worldToChunkCoords and world->getChunkAt.
-                            // Since these are commented out in World.h, we'll default to rendering the face.
-                            // A more complete flat-world implementation would require these or similar functions.
                             shouldRenderFace = true; 
                         } else {
-                            // Neighbor is within this chunk
-                            shouldRenderFace = !hasBlockAtLocal(nx, ny, nz);
+                            unsigned char neighborBlockType = blockDataForInitialization_[nx][ny][nz].type;
+                            if (!Block::isTypeSolid(neighborBlockType)) { // If neighbor is not solid (e.g., Air, Water, Leaves)
+                                shouldRenderFace = true;
+                            }
+                            // Else, neighbor is solid, so don't render this face
                         }
 
                         if (shouldRenderFace) {
-                            unsigned char blockType = blockDataForInitialization_[x_local][y_local][z_local].type;
                             float uvPixelOffsetX = 0.0f, uvPixelOffsetY = 0.0f;
-                            if (blockType == 1) { uvPixelOffsetX = 0.0f; uvPixelOffsetY = 0.0f; } // Stone
-                            else if (blockType == 2) { uvPixelOffsetX = 80.0f; uvPixelOffsetY = 0.0f; } // Grass
-                            else if (blockType == 3) { uvPixelOffsetX = 160.0f; uvPixelOffsetY = 0.0f; } // Dirt
+                            if (currentBlockType == 1) { uvPixelOffsetX = 0.0f; uvPixelOffsetY = 0.0f; }      // Stone (0,0)
+                            else if (currentBlockType == 2) { uvPixelOffsetX = 80.0f; uvPixelOffsetY = 0.0f; } // Grass (1,0)
+                            else if (currentBlockType == 3) { uvPixelOffsetX = 160.0f; uvPixelOffsetY = 0.0f; } // Dirt (2,0)
+                            else if (currentBlockType == 4) { uvPixelOffsetX = 240.0f; uvPixelOffsetY = 0.0f; } // Sand (3,0)
+                            else if (currentBlockType == 5) { uvPixelOffsetX = 80.0f; uvPixelOffsetY = 80.0f; } // Water (4,0)
+                            else if (currentBlockType == 6) { uvPixelOffsetX = 0.0f; uvPixelOffsetY = 80.0f; }   // Snow (0,1)
+                            else if (currentBlockType == 7) { uvPixelOffsetX = 80.0f; uvPixelOffsetY = 80.0f; } // Wood Log (1,1)
+                            else if (currentBlockType == 8) { uvPixelOffsetX = 160.0f; uvPixelOffsetY = 80.0f; } // Leaves (2,1)
+                            else if (currentBlockType == 9) { uvPixelOffsetX = 240.0f; uvPixelOffsetY = 00.0f; } // Gravel (3,1)
+                            else if (currentBlockType == 10) { uvPixelOffsetX = 320.0f; uvPixelOffsetY = 80.0f; } // Gold Ore (4,1)
+                            // Add more types as needed
+                            else { /* Default or air, UVs won't matter as face isn't rendered or uses default */ }
 
                             for (int i = 0; i < 4; ++i) {
                                 meshVertices.push_back(x_local + faceVertices[face][i][0]);
@@ -439,8 +506,8 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
                                 } else {
                                     meshVertices.push_back(texCoords[i].x); // Fallback UVs
                                     meshVertices.push_back(texCoords[i].y);
-            }
-        }
+                                }
+                            }
                             meshIndices.push_back(vertexIndexOffset + 0); meshIndices.push_back(vertexIndexOffset + 1); meshIndices.push_back(vertexIndexOffset + 2);
                             meshIndices.push_back(vertexIndexOffset + 2); meshIndices.push_back(vertexIndexOffset + 3); meshIndices.push_back(vertexIndexOffset + 0);
                             vertexIndexOffset += 4;
@@ -467,29 +534,45 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
                         int nz_loc = z_loc + neighborOffsets[face][2];
 
                         bool shouldRenderFace = false;
+                        unsigned char currentBlockType = blockDataForInitialization_[x_loc][y_loc][z_loc].type;
+                        if (currentBlockType == 0) continue; // Should not happen if hasBlockAtLocal was true
+
                         if (nx_loc < 0 || nx_loc >= CHUNK_SIZE_X || ny_loc < 0 || ny_loc >= CHUNK_SIZE_Y || nz_loc < 0 || nz_loc >= CHUNK_SIZE_Z) {
-                            // Neighbor is outside this chunk.
                             glm::vec3 neighborBlockWorldCenter = position + glm::vec3(nx_loc + 0.5f, ny_loc + 0.5f, nz_loc + 0.5f);
                             if (glm::length(neighborBlockWorldCenter - planetCenter) > planetRadius) {
-                                shouldRenderFace = true; // Neighbor is outside planet, so current block's face is visible.
+                                shouldRenderFace = true; // Neighbor is outside planet, effectively air
                             } else {
                                 // Neighbor is inside planet radius but in another chunk.
-                                // This is complex. A robust solution needs checking the actual block in the adjacent planetary chunk.
-                                // For now, to avoid gaps at chunk boundaries on the sphere, we'll assume the face is visible.
-                                // This might render some internal faces between planet chunks but is safer than holes.
-                                shouldRenderFace = true; 
+                                // For now, assume it could be non-solid or we want to see the boundary.
+                                // A more complex check would involve getting the block type from the adjacent chunk.
+                                // Let's simplify: if the current block is solid and the neighbor is at the boundary, render.
+                                // This also needs the type of the neighbor to be truly correct.
+                                // For now, the logic will be similar to the intra-chunk check: render if neighbor *would be* non-solid.
+                                // This needs a proper neighbor check across chunks for perfection.
+                                shouldRenderFace = true; // Placeholder: always render inter-chunk faces for now if current is solid
                             }
                         } else {
-                            // Neighbor is within this chunk
-                            shouldRenderFace = !hasBlockAtLocal(nx_loc, ny_loc, nz_loc);
+                            unsigned char neighborBlockType = blockDataForInitialization_[nx_loc][ny_loc][nz_loc].type;
+                            if (!Block::isTypeSolid(neighborBlockType)) { // If neighbor is not solid
+                                shouldRenderFace = true;
+                            }
+                            // Else, neighbor is solid, so don't render this face
                         }
 
                         if (shouldRenderFace) {
-                            unsigned char blockType = blockDataForInitialization_[x_loc][y_loc][z_loc].type;
                             float uvPixelOffsetX = 0.0f, uvPixelOffsetY = 0.0f;
-                            if (blockType == 1) { uvPixelOffsetX = 0.0f; uvPixelOffsetY = 0.0f; } 
-                            else if (blockType == 2) { uvPixelOffsetX = 80.0f; uvPixelOffsetY = 0.0f; } 
-                            else if (blockType == 3) { uvPixelOffsetX = 160.0f; uvPixelOffsetY = 0.0f; }
+                            if (currentBlockType == 1) { uvPixelOffsetX = 0.0f; uvPixelOffsetY = 0.0f; }      // Stone (0,0)
+                            else if (currentBlockType == 2) { uvPixelOffsetX = 80.0f; uvPixelOffsetY = 0.0f; } // Grass (1,0)
+                            else if (currentBlockType == 3) { uvPixelOffsetX = 160.0f; uvPixelOffsetY = 0.0f; } // Dirt (2,0)
+                            else if (currentBlockType == 4) { uvPixelOffsetX = 240.0f; uvPixelOffsetY = 0.0f; } // Sand (3,0)
+                            else if (currentBlockType == 5) { uvPixelOffsetX = 320.0f; uvPixelOffsetY = 0.0f; } // Water (4,0)
+                            else if (currentBlockType == 6) { uvPixelOffsetX = 0.0f; uvPixelOffsetY = 80.0f; }   // Snow (0,1)
+                            else if (currentBlockType == 7) { uvPixelOffsetX = 80.0f; uvPixelOffsetY = 80.0f; } // Wood Log (1,1)
+                            else if (currentBlockType == 8) { uvPixelOffsetX = 160.0f; uvPixelOffsetY = 80.0f; } // Leaves (2,1)
+                            else if (currentBlockType == 9) { uvPixelOffsetX = 240.0f; uvPixelOffsetY = 80.0f; } // Gravel (3,1)
+                            else if (currentBlockType == 10) { uvPixelOffsetX = 320.0f; uvPixelOffsetY = 80.0f; } // Gold Ore (4,1)
+                             // Add more types as needed
+                            else { /* Default or air, UVs won't matter as face isn't rendered or uses default */ }
 
                             for (int i = 0; i < 4; ++i) {
                                 glm::vec3 localFaceVertexPos = glm::vec3(x_loc + faceVertices[face][i][0],
@@ -611,6 +694,22 @@ void Chunk::openglInitialize(World* world) {
                         blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.2f, 0.8f, 0.2f), 1.0f);
                     } else if (info.type == 3) { 
                         blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.6f, 0.4f, 0.2f), 1.0f);
+                    } else if (info.type == 4) { // Sand
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.9f, 0.9f, 0.6f), 1.0f); // Sandy color
+                    } else if (info.type == 5) { // Water
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.2f, 0.4f, 0.8f), 1.0f); // Watery color
+                    } else if (info.type == 6) { // Snow
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.95f, 0.95f, 1.0f), 1.0f); // Snowy color
+                    } else if (info.type == 7) { // Wood Log
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.4f, 0.3f, 0.2f), 1.0f); // Woody color
+                    } else if (info.type == 8) { // Leaves
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.1f, 0.5f, 0.1f), 1.0f); // Leafy color
+                    } else if (info.type == 9) { // Gravel
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.6f, 0.6f, 0.6f), 1.0f); // Gravel color
+                    } else if (info.type == 10) { // Gold Ore
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.8f, 0.7f, 0.2f), 1.0f); // Goldish color
+                    } else { // Default for any other new types, or if type is unknown but not 0
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f), 1.0f); // Default grey
                     }
                 } else if (info.type == 0 && blocks_[x][y][z] != nullptr) { 
                     blocks_[x][y][z] = nullptr;
