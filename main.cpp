@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <cstdlib> // For system
+#include <iomanip> // For std::setprecision
 
 #include "headers/window.h"
 #include "headers/block.h"
@@ -62,6 +63,9 @@ int main() {
         return -1;
     }
 
+    // Enable mouse capture
+    window.enableMouseCapture(true);
+
     // Clear any errors from GLEW initialization - this is normal
     while (glGetError() != GL_NO_ERROR);
 
@@ -94,6 +98,7 @@ int main() {
     
     // Initialize the static block shader program once
     Block::InitBlockShader();
+    Block::InitSpritesheet("res/textures/Spritesheet.PNG"); // Load the global spritesheet
 
     // Enable depth testing
     glEnable(GL_DEPTH_TEST);
@@ -172,8 +177,8 @@ int main() {
         // Process tasks queued for the main thread (OpenGL operations)
         world.processMainThreadTasks();
         
-        // Render world
-        world.render(projection, view, camera);
+        // Render world, passing wireframe state from the window
+        world.render(projection, view, camera, window.isWireframeMode());
         
         // Check for OpenGL errors after rendering
         error = glGetError();
@@ -181,11 +186,16 @@ int main() {
             std::cerr << "OpenGL error after rendering: " << error << std::endl;
         }
         
-        // Display camera position (for debugging) and FPS
-        std::cout << "Camera: [" << camera.getPosition().x << ", " 
-                                 << camera.getPosition().y << ", " 
-                                 << camera.getPosition().z << "]  "
-                  << "FPS: " << fps << "   ";
+        // Display camera position (for debugging) and FPS - update once per second
+        static float consoleUpdateTimer = 0.0f;
+        consoleUpdateTimer += deltaTime;
+        if (consoleUpdateTimer >= 1.0f) {
+            std::cout << "\rCamera: [" << std::fixed << std::setprecision(1) << camera.getPosition().x 
+                      << ", " << camera.getPosition().y 
+                      << ", " << camera.getPosition().z << "]  "
+                      << "FPS: " << fps << "     "; // Added spaces to overwrite previous longer lines, \r for same line
+            consoleUpdateTimer = 0.0f;
+        }
         
         // Swap buffers and poll events
         window.swapBuffers();
@@ -195,7 +205,7 @@ int main() {
     // Cleanup
     Block::CleanupBlockShader();
     
-    std::cout << std::endl; // Add newline after loop ends
+    std::cout << std::endl; // Ensure cursor moves to next line on exit
     glfwTerminate(); // Terminate GLFW at the end
     return 0;
 }

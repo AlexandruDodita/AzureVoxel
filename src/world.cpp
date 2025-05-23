@@ -89,7 +89,7 @@ void World::update(const Camera& camera) {
     // Debug the player's chunk position
     static glm::ivec2 lastPlayerChunkPos(-999, -999);
     if (playerChunkPos.x != lastPlayerChunkPos.x || playerChunkPos.y != lastPlayerChunkPos.y) {
-        std::cout << "Player moved to chunk: (" << playerChunkPos.x << ", " << playerChunkPos.y << ")" << std::endl;
+        // std::cout << "Player moved to chunk: (" << playerChunkPos.x << ", " << playerChunkPos.y << ")" << std::endl; // Keep commented for cleaner output
         lastPlayerChunkPos = playerChunkPos;
     }
     
@@ -153,10 +153,9 @@ void World::update(const Camera& camera) {
     // Unload chunks outside active zone
     for (const auto& pos : chunksToRemove) {
         if (chunks.count(pos) > 0) {
-            // Save the chunk before removing it
             chunks[pos]->saveToFile(worldDataPath_);
             chunks.erase(pos);
-            std::cout << "Unloaded chunk at " << pos.x << "," << pos.y << std::endl;
+            // std::cout << "Unloaded chunk at " << pos.x << "," << pos.y << std::endl; // Keep commented
         }
     }
     
@@ -170,31 +169,26 @@ void World::update(const Camera& camera) {
     
     static int lastReportedCount = -1;
     if (initializedCount != lastReportedCount) {
-        std::cout << "Chunks initialized: " << initializedCount << "/" << chunks.size() 
-                  << " (" << (chunks.size() > 0 ? (initializedCount * 100 / chunks.size()) : 0) << "%)" << std::endl;
+        // std::cout << "Chunks initialized: " << initializedCount << "/" << chunks.size() 
+        //           << " (" << (chunks.size() > 0 ? (initializedCount * 100 / chunks.size()) : 0) << "%)" << std::endl; // Keep commented
         lastReportedCount = initializedCount;
     }
 }
 
-void World::render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera) {
-    // Calculate which chunk the camera is in
+void World::render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera, bool wireframeState) {
     glm::ivec2 camChunkPos = worldToChunkCoords(camera.getPosition());
-    
     int renderedChunks = 0;
     int totalChunks = chunks.size();
-    
-    // First, render all chunks
+
     for (auto const& [pos, chunk] : chunks) {
-        // Skip chunks that aren't initialized yet (still being processed by worker thread)
         if (!chunk->isInitialized()) {
             continue;
         }
-        
-        // All chunks use the optimized surface rendering
-        chunk->renderSurface(projection, view);
+        // Pass wireframeState to chunk's render method
+        chunk->renderSurface(projection, view, wireframeState);
         renderedChunks++;
     }
-    
+
     // Output render statistics periodically
     static int lastFrameCount = 0;
     static auto lastOutputTime = std::chrono::high_resolution_clock::now();
@@ -203,8 +197,8 @@ void World::render(const glm::mat4& projection, const glm::mat4& view, const Cam
     
     // Update once per second
     if (elapsedTime > 1000) {
-        std::cout << "\nRendering " << renderedChunks << "/" << totalChunks << " chunks"
-                  << " from camera at chunk: (" << camChunkPos.x << ", " << camChunkPos.y << ")" << std::endl;
+        // std::cout << "\nRendering " << renderedChunks << "/" << totalChunks << " chunks"
+        //           << " from camera at chunk: (" << camChunkPos.x << ", " << camChunkPos.y << ")" << std::endl;
         lastOutputTime = currentTime;
         lastFrameCount = 0;
     }

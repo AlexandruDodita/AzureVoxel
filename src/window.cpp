@@ -4,6 +4,44 @@
 // Static variables to store input state
 Window* Window::currentWindow = nullptr;
 
+// Constructor that creates a new GLFW window
+Window::Window(int width, int height, const std::string& title)
+    : width(width), height(height), title(title), window(nullptr),
+      lastX(width / 2.0), lastY(height / 2.0), xOffset(0.0), yOffset(0.0), firstMouse(true),
+      wireframeMode(false) {
+    
+    // Initialize GLFW
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW" << std::endl;
+        return;
+    }
+    
+    // Configure GLFW
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+    
+    // Create window
+    window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+    if (!window) {
+        std::cerr << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return;
+    }
+    
+    // Make the window's context current
+    glfwMakeContextCurrent(window);
+    
+    // Set callbacks
+    currentWindow = this;
+    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+    glfwSetKeyCallback(window, keyCallback);
+    glfwSetCursorPosCallback(window, mouseCallback);
+    
+    // Enable vsync
+    glfwSwapInterval(1);
+}
+
 // New constructor that uses an existing GLFWwindow
 Window::Window(GLFWwindow* existingWindow, int width, int height)
     : width(width), height(height), title("AzureVoxel"), window(existingWindow),
@@ -59,11 +97,11 @@ void Window::enableMouseCapture(bool enable) {
     // issues with certain window managers and mouse input systems.
     // Uncomment the following code to re-enable if needed and your system supports it.
     //
-    // if (enable) {
-    //     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    // } else {
-    //     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    // }
+    if (enable) {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    } else {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
 }
 
 void Window::getMouseOffset(double& x, double& y) {

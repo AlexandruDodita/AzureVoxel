@@ -25,12 +25,12 @@
 ├── res/
 │   └── textures/
 │       ├── grass_block.png
-│       ├── grass_block.pngZone.Identifier
+│       ├── grass_block.png Zone.Identifier # Should be deleted if not used
 │       └── spritesheet.png // Master spritesheet for block textures
 └── shaders/
     ├── fragment.glsl
     ├── vertex.glsl
-    └── vortex.glsl
+    └── vortex.glsl # Typo? Should likely be vertex.glsl or similar.
 └── src/
     ├── block.cpp
     ├── camera.cpp
@@ -46,30 +46,27 @@
 ## File Details
 
 ### `main.cpp` in `./`
-This file serves as the main entry point and orchestrator for the AzureVoxel application. It initializes the windowing system (GLFW), graphics rendering (GLEW), creates the game world, and runs the main game loop. It handles user input for camera movement, updates game state, and renders the scene.
+This file serves as the main entry point for the AzureVoxel application. It initializes GLFW, GLEW, creates the game window, sets up the camera and world, and runs the main game loop. It now also initializes a global spritesheet texture and enables mouse capture.
 
-*   **`main()`** - This is the primary function where the application starts.
-    *   Initializes a `Window` object with specified dimensions and title.
-    *   Initializes GLEW for OpenGL extension loading. If initialization fails, it prints an error and exits.
-    *   Calls `Block::InitBlockShader()` to compile and link the shared shader program for blocks. This must be done after GLEW initialization and before any `Block` objects attempt to use the shader.
-    *   Prints the current OpenGL version.
-    *   Enables depth testing for correct 3D rendering.
-    *   Creates a `Camera` object, positioning it for a good view of the terrain and setting mouse sensitivity.
-    *   (Note: The call to an external Python script `create_texture.py` to generate textures has been commented out, as textures are now expected to be pre-existing, e.g., `spritesheet.png`.)
-    *   Creates a `World` object, defining its render distance (e.g., 3 chunks, adjustable for performance/viewing needs). The world dynamically loads/generates chunks based on this render distance and player position via its `update()` method.
-    *   Enters the main game loop which continues until the window is closed.
-        *   Calculates `deltaTime` for frame-rate independent movement and physics.
-        *   Calculates and updates Frames Per Second (FPS).
-        *   Processes keyboard input via the `camera.processKeyboard()` method.
-        *   Processes mouse input for camera orientation using `window.getMouseOffset()` and `camera.processMouseMovement()`.
-        *   Creates the view matrix using `camera.getViewMatrix()`.
-        *   Creates the projection matrix using `glm::perspective`, defining the camera's field of view, aspect ratio, and near/far clipping planes.
-        *   Clears the screen with a sky blue color and clears the depth buffer.
-        *   Calls `world.update(camera)` to handle dynamic loading/unloading of chunks around the camera. This method now ensures chunks are initialized (loaded from file or generated using a seed, saved, and meshed) as they come into render distance.
-        *   Renders the currently loaded and active chunks using `world.render()`, passing the projection, view matrices, and camera object.
-        *   Prints the current camera position and FPS to the console.
-        *   Swaps the front and back buffers of the window (`window.swapBuffers()`) to display the rendered frame.
-    *   After the loop ends (window is closed), calls `Block::CleanupBlockShader()` to delete the shared block shader program, then prints a newline and returns 0, indicating successful execution.
+*   **`main()`** - Primary application function.
+    *   Initializes GLFW and GLEW.
+    *   Creates a `Window` object using an existing `GLFWwindow*`.
+    *   Calls `window.enableMouseCapture(true);` to lock and hide the cursor for FPS-style camera control.
+    *   Calls `Block::InitBlockShader()` to set up the static shader for blocks.
+    *   Calls `Block::InitSpritesheet("res/textures/Spritesheet.PNG")` to load the global texture atlas.
+    *   Enables depth testing and face culling.
+    *   Creates `Camera` and `World` objects.
+    *   Enters the main game loop:
+        *   Calculates `deltaTime` and FPS.
+        *   Processes keyboard and mouse input for camera movement.
+        *   Calculates view and projection matrices.
+        *   Clears the screen.
+        *   Calls `world.update(camera)` to manage chunk loading/unloading.
+        *   Calls `world.processMainThreadTasks()` for OpenGL operations queued by worker threads.
+        *   Calls `world.render(projection, view, camera, window.isWireframeMode())` to draw the scene, now passing the window's wireframe state.
+        *   Swaps window buffers and polls events.
+    *   After the loop, calls `Block::CleanupBlockShader()` and `glfwTerminate()`.
+    *   Console output for FPS and camera position updates once per second using `\r` for same-line output.
 
 ---
 
@@ -163,37 +160,31 @@ This file provides an overview of the AzureVoxel project. It includes a brief de
 ---
 
 ### `headers/block.h` in `headers/`
-This header file defines the `Block` class, which represents a single voxel or cube in the 3D world. It manages the block\'s properties such as position, color, size, and texture, as well as its rendering through OpenGL. It now uses a static shader program initialized once.
+Defines the `Block` class, representing a single voxel. It manages block properties and rendering. Now includes static members for a shared shader program and a global spritesheet texture.
 
-*   **`Block`** - Represents a single cube in the game world.
+*   **`Block`** - Represents a single cube.
     *   **Private Members:**
-        *   `VAO, VBO, EBO, texCoordVBO` (GLuint): OpenGL identifiers for vertex array data specific to an individual block instance (if `Block::render` is used).
-        *   `position` (glm::vec3): The 3D coordinates of the block\'s center.
-        *   `color` (glm::vec3): The base color of the block.
-        *   `size` (float): The edge length of the cube.
-        *   `texture` (Texture): A `Texture` object associated with this block.
-        *   `hasTexture` (bool): Flag indicating whether the block has a texture loaded.
-        *   `speed` (float): Movement speed (not actively used).
+        *   `VAO, VBO, EBO, texCoordVBO` (GLuint): For individual block rendering (less common).
+        *   `position`, `color`, `size` (glm::vec3, float).
+        *   `texture` (Texture): For individual block texture instances (e.g., for a template block).
+        *   `hasTexture` (bool): If the individual `texture` member is loaded.
     *   **Public Static Members:**
-        *   `shaderProgram` (GLuint): Static identifier for the shared, compiled GLSL shader program used by all blocks. Initialized to 0.
+        *   `shaderProgram` (GLuint): ID for the shared GLSL shader program.
+        *   `spritesheetTexture` (Texture): Stores the globally loaded texture atlas (`Spritesheet.PNG`).
+        *   `spritesheetLoaded` (bool): Flag indicating if `spritesheetTexture` was successfully loaded.
     *   **Public Static Methods:**
-        *   `InitBlockShader()`: Compiles and links the global vertex and fragment shaders for blocks. Stores the resulting program ID in `Block::shaderProgram`. Must be called once from the main thread after OpenGL context and GLEW are ready.
-        *   `CleanupBlockShader()`: Deletes the `Block::shaderProgram`. Must be called once from the main thread before application exit.
+        *   `InitBlockShader()`: Compiles and links the static shader program.
+        *   `InitSpritesheet(const std::string& path)`: Loads the global spritesheet texture from the given path into `Block::spritesheetTexture`.
+        *   `CleanupBlockShader()`: Deletes the static shader program.
     *   **Public Methods:**
-        *   `Block(const glm::vec3& position, const glm::vec3& color, float size)` - Constructor.
-        *   `~Block()` - Destructor (cleans up VAO, VBO, EBO, texCoordVBO if created for this instance).
-        *   `init()` - Initializes the OpenGL buffers (VAO, VBO, EBO, texCoordVBO) for an individual block's geometry if `Block::render()` is to be used. It no longer compiles shaders; it assumes `Block::InitBlockShader()` has been called. Prints an error if `Block::shaderProgram` is 0.
-        *   `render(const glm::mat4& projection, const glm::mat4& view)` - Renders the individual block using its own VAO and the static `Block::shaderProgram`.
-        *   (Other methods like `move`, `setPosition`, `loadTexture`, `getPosition`, `getColor`, `hasTextureState`, `getTextureID`, `useBlockShader`, `bindBlockTexture`, `setShaderUniforms` remain largely the same, but `useBlockShader` and `setShaderUniforms` now refer to `Block::shaderProgram`.)
-        *   `shareTextureAndShaderFrom(const Block& other)` - Allows this block to share the texture and shader program from another `Block` object. This is an optimization to avoid redundant texture loading and shader compilation for identical blocks.
-        *   `getPosition() const` (glm::vec3) - Returns the current 3D position of the block.
-        *   `getColor() const` (glm::vec3) - Returns the base color of the block.
-        *   `getShaderProgram() const` (GLuint) - Returns the static `Block::shaderProgram`.
-        *   `hasTextureState() const` (bool) - Returns true if the block has a texture, false otherwise. (Renamed to avoid conflict with `Texture` class methods).
-        *   `getTextureID() const` (GLuint) - Returns the OpenGL ID of the block\'s texture.
-        *   `useBlockShader() const` - Activates the block\'s shader program using `glUseProgram`.
-        *   `bindBlockTexture() const` - Binds the block\'s texture using `glBindTexture` if `hasTexture` is true.
-        *   `setShaderUniforms(const glm::mat4& projection, const glm::mat4& view, const glm::mat4& model) const` - Sets the necessary transformation matrix uniforms (projection, view, model) in the block\'s shader.
+        *   Constructor `Block(glm::vec3, glm::vec3, float)`.
+        *   Destructor `~Block()`.
+        *   `init()`: Sets up VAO/VBO for individual block rendering.
+        *   `render(projection, view)`: Renders a single block instance (primarily for debugging or non-chunk rendering).
+        *   `loadTexture(...)`: Methods for loading unique textures or sub-regions for an individual `Block` instance's `texture` member.
+        *   `shareTextureAndShaderFrom(const Block& other)`: Copies texture data from another block (shader part is now implicit due to static shader).
+        *   Other getters and setters for block properties.
+        *   `setShaderUniforms(...)`: Now primarily sets uniforms for individual block rendering; chunk rendering sets its own.
 
 ---
 
@@ -255,7 +246,7 @@ This header file defines the `Chunk` class, which represents a 3D segment of the
         *   `generateTerrain(int seed)`: Populates the chunk with blocks based on a procedural generation algorithm (currently a simple noise function) using the provided `seed`.
         *   `ensureInitialized(const World* world, int seed, const std::string& worldDataPath)`: The main method to prepare a chunk. It tries to load from file using `worldDataPath`. If not found, it calls `generateTerrain(seed)`, saves the new chunk, and then builds its surface mesh via `buildSurfaceMesh(world)`. Sets `isInitialized_` to true upon completion.
         *   `isInitialized() const` (bool): Returns true if `ensureInitialized()` has completed for this chunk, false otherwise.
-        *   `renderSurface(const glm::mat4& projection, const glm::mat4& view)`: Renders the chunk using its `surfaceMesh`.
+        *   `renderSurface(const glm::mat4& projection, const glm::mat4& view, bool wireframeState) const`: Renders the chunk using its `surfaceMesh`.
         *   `renderAllBlocks(const glm::mat4& projection, const glm::mat4& view)`: Renders all blocks in the chunk individually (less efficient, for debugging or specific cases).
         *   `getBlockAtLocal(int x, int y, int z) const` (std::shared_ptr<Block>): Retrieves a block at local chunk coordinates.
         *   `setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block)`: Sets a block at local coordinates and marks `needsRebuild` as true.
@@ -309,6 +300,9 @@ This header file defines the `Texture` class, which is responsible for loading i
         *   `bind(unsigned int textureUnit = 0) const` - Activates the specified texture unit (`glActiveTexture(GL_TEXTURE0 + textureUnit)`) and binds this texture (`glBindTexture(GL_TEXTURE_2D, textureID)`) to it, making it the active texture for subsequent rendering operations.
         *   `unbind()` (static) - Unbinds any 2D texture from the currently active texture unit by calling `glBindTexture(GL_TEXTURE_2D, 0)`.
         *   `getID() const` (unsigned int) - Returns the OpenGL `textureID` of this texture.
+        *   `int getWidth() const` - Returns the texture width.
+        *   `int getHeight() const` - Returns the texture height.
+        *   `int getChannels() const` - Returns the number of texture channels.
 
 ---
 
@@ -337,7 +331,7 @@ This header file defines the `Window` class, which encapsulates the creation and
         *   `swapBuffers()` - Swaps the front and back buffers of the window using `glfwSwapBuffers(window)`, displaying the rendered frame.
         *   `pollEvents()` - Polls for and processes pending events (like keyboard presses, mouse movements, window events) using `glfwPollEvents()`.
         *   `getWindow() const` (GLFWwindow*) - Returns the raw pointer to the GLFW window object.
-        *   `enableMouseCapture(bool enable)` - Enables or disables mouse cursor capture. If enabled, the cursor is hidden and locked to the window (`GLFW_CURSOR_DISABLED`). If disabled, the cursor is made visible and behaves normally (`GLFW_CURSOR_NORMAL`).
+        *   `enableMouseCapture(bool enable)` - Enables or disables mouse cursor capture. If enabled, the cursor is hidden and locked to the window (`GLFW_CURSOR_DISABLED`), allowing for continuous mouse movement for camera control. If disabled, the cursor is made visible and behaves normally (`GLFW_CURSOR_NORMAL`). This is now actively used.
         *   `getMouseOffset(double& x, double& y)` - Retrieves the calculated mouse movement offsets (`xOffset`, `yOffset`) since the last call.
         *   `resetMouseOffset()` - Resets `xOffset` and `yOffset` to 0.0, typically called after processing mouse input for a frame.
         *   `isKeyPressed(int key) const` (bool) - Checks if a specific keyboard key is currently pressed. It uses `glfwGetKey(window, key) == GLFW_PRESS`.
@@ -377,7 +371,7 @@ This header file defines the `World` class, which manages the overall game envir
             *   It sorts chunks by distance to the player for prioritized loading.
             *   For each necessary chunk not already loaded, it creates a placeholder and queues background initialization.
             *   It unloads chunks that are outside the active region by saving them and removing them from the map.
-        *   `render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)`: Renders all currently loaded and initialized chunks.
+        *   `render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera, bool wireframeState)`: Renders all currently loaded and initialized chunks.
             *   It skips chunks that are still being initialized by the worker thread.
             *   It distinguishes between the chunk the camera is currently in (using `renderAllBlocks`) and others (using `renderSurface`).
         *   `getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>): Retrieves an initialized chunk by its chunk coordinates.
@@ -412,7 +406,7 @@ This file provides the implementation for the `Block` class. It defines the stat
         *   No longer compiles shaders.
         *   Checks if `Block::shaderProgram` is 0 and prints an error if so (indicates `InitBlockShader` was missed or failed).
         *   Proceeds with VAO/VBO/EBO/texCoordVBO setup for individual block rendering as before.
-    *   **`render(...)`**: Uses `Block::shaderProgram`.
+    *   **`render(const glm::mat4& projection, const glm::mat4& view)`**: Uses `Block::shaderProgram`.
     *   **`shareTextureAndShaderFrom(const Block& other)`**: No longer copies `shaderProgram` from `other`.
     *   **`useBlockShader() const`**: Uses `Block::shaderProgram`.
     *   **`setShaderUniforms(...) const`**: Uses `Block::shaderProgram`.
@@ -483,26 +477,28 @@ This file implements the `Chunk` class, which represents a segment of the game w
 *   **`buildSurfaceMesh(const World* world)`**: Builds an optimized mesh for visible block faces.
     *   (As previously documented regarding reserving memory, iteration order, neighbor checking)
     *   Vertex data added to `meshVertices` includes 3 floats for position and 2 floats for texture coordinates (total 5 floats per vertex).
+    *   **Texture Atlas UV Calculation:** For each visible face, the `blockType` (from `blockDataForInitialization_`) is used to determine `uvPixelOffsetX` and `uvPixelOffsetY`. These offsets represent the top-left pixel coordinates of the desired 80x80 texture within the global `Block::spritesheetTexture` (previously assumed 16x16).
+        *   For example, `blockType == 1` (Stone) might use `uvPixelOffsetX = 0.0f, uvPixelOffsetY = 0.0f`.
+        *   `blockType == 2` (Grass) might use `uvPixelOffsetX = 80.0f, uvPixelOffsetY = 0.0f` (updated from 16.0f).
+        *   Users can define new block types and their corresponding pixel offsets in this section to sample different parts of the `Spritesheet.PNG`.
+    *   The final UV coordinates (`actualU`, `actualV`) for each vertex of a face are then calculated by:
+        *   `actualU = (uvPixelOffsetX + texCoords[i].x * 80.0f) / Block::spritesheetTexture.getWidth();`
+        *   `actualV = (uvPixelOffsetY + texCoords[i].y * 80.0f) / Block::spritesheetTexture.getHeight();`
+        *   Where `texCoords[i]` provides the 0.0 to 1.0 UVs for a standard quad, and `80.0f` assumes each sub-texture in the atlas is 80x80 pixels (updated from 16.0f).
     *   If `meshVertices` is empty after checking all blocks, returns early.
     *   Creates OpenGL buffers (`surfaceMesh.VAO`, `VBO`, `EBO`).
     *   Configures vertex attribute pointers for `surfaceMesh.VAO`:
         *   Position: `layout (location = 0)`, 3 floats, stride `5 * sizeof(float)`, offset 0.
         *   Texture Coords: `layout (location =1)`, 2 floats, stride `5 * sizeof(float)`, offset `3 * sizeof(float)`.
     *   Sets `surfaceMesh.indexCount` and `needsRebuild = false`.
-*   **`renderSurface(const glm::mat4& projection, const glm::mat4& view)`**: Renders the pre-built surface mesh.
-    *   Returns if `surfaceMesh.indexCount` or `VAO` is 0.
-    *   Uses the static `Block::shaderProgram`. If the program ID is 0, prints an error and returns.
-    *   Sets model (translation to chunk position), view, and projection matrix uniforms in the shader.
-    *   Finds a `representativeBlock` from the chunk.
-    *   If a `representativeBlock` is found and has a texture:
-        *   Sets `useTexture` uniform to true.
-        *   Sets `blockTexture` uniform to texture unit 0.
-        *   Binds the `representativeBlock`'s texture.
-    *   Else (no textured block or representative block has no texture):
-        *   Sets `useTexture` uniform to false (shader will use fallback color).
-    *   Binds the `surfaceMesh.VAO`.
-    *   Draws using `glDrawElements` with `surfaceMesh.indexCount`.
-    *   Unbinds VAO and texture (if one was bound).
+*   **`renderSurface(const glm::mat4& projection, const glm::mat4& view, bool wireframeState) const`:**
+    *   Accepts `wireframeState`.
+    *   If `wireframeState` is true:
+        *   Sets `useTexture` uniform to `0` (false).
+        *   Sets `blockColor` uniform to a calculated color (e.g., blue-ish, varying by chunk position) for wireframe rendering.
+    *   If `wireframeState` is false:
+        *   Proceeds with normal texture binding using `Block::spritesheetTexture`.
+        *   Uses a fallback solid color if the spritesheet isn't loaded.
 *   **`renderAllBlocks(...)`**: (As previously documented)
 *   **`hasBlockAtLocal(...)` (bool)**: (As previously documented)
 *   **`getBlockAtLocal(...)` (std::shared_ptr<Block>)**: (As previously documented)
@@ -555,7 +551,7 @@ This file provides the implementation for the `Shader` class, which encapsulates
     *   **Destructor `~Shader()`:**
         *   Deletes the shader program using `glDeleteProgram(ID)`.
     *   **`use() const`:**
-        *   Activates the shader program by calling `glUseProgram(ID)`.
+        *   Activates this shader program for rendering by calling `glUseProgram(ID)`.
     *   **`setBool(const std::string& name, bool value) const`:**
         *   Sets a boolean uniform variable. `glUniform1i(glGetUniformLocation(ID, name.c_str()), (int)value)`.
     *   **`setInt(const std::string& name, int value) const`:**
@@ -563,9 +559,9 @@ This file provides the implementation for the `Shader` class, which encapsulates
     *   **`setFloat(const std::string& name, float value) const`:**
         *   Sets a float uniform variable. `glUniform1f(glGetUniformLocation(ID, name.c_str()), value)`.
     *   **`setVec3(const std::string& name, const glm::vec3& value) const`:**
-        *   Sets a 3-component vector uniform. `glUniform3fv(glGetUniformLocation(ID, name.c_str()), 1, glm::value_ptr(value))`.
+        *   Sets a 3-component vector (glm::vec3) uniform variable in the shader program.
     *   **`setMat4(const std::string& name, const glm::mat4& value) const`:**
-        *   Sets a 4x4 matrix uniform. `glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, glm::value_ptr(value))`.
+        *   Sets a 4x4 matrix (glm::mat4) uniform variable in the shader program.
     *   **`checkCompileErrors(unsigned int shader, std::string type)`:**
         *   Declares `int success` and `char infoLog[1024]`.
         *   **If `type` is not "PROGRAM" (i.e., "VERTEX" or "FRAGMENT"):**
@@ -588,9 +584,8 @@ Implementation of the `Texture` class. Uses `stb_image.h` to load image data fro
 *   **`Texture::Texture()`**: Default constructor.
 *   **`Texture::~Texture()`**: Destructor, deletes texture if not shared.
 *   **`Texture::Texture(const Texture& other)` and `Texture& Texture::operator=(const Texture& other)`**: Copy constructor and assignment operator for managing shared texture resources.
-*   **`Texture::loadFromFile(...)`**: Loads an image using `stbi_load`, generates an OpenGL texture, sets parameters (wrapping, filtering - uses `GL_NEAREST` for pixel art), and uploads data using `glTexImage2D`. Frees `stb_image` data.
-*   **`Texture::loadFromSpritesheet(...)`**: Loads the entire spritesheet using `stbi_load`. Validates the requested sub-region coordinates (`atlasX`, `atlasY`, `atlasWidth`, `atlasHeight`). Allocates memory for the sub-image data and copies pixels from the full spritesheet data into this new buffer. Then, generates an OpenGL texture using this sub-image data, similar to `loadFromFile`. Frees both the full spritesheet data and the temporary sub-image buffer.
-*   **`Texture::bind(...)`**: Activates texture unit and binds the texture.
+*   **`Texture::loadFromFile(const std::string& filepath)`**: Loads an image from the specified file path and creates an OpenGL texture from it. It uses the `stb_image` library (implicitly, via `texture.cpp`) to load image data. It configures texture parameters like wrapping (GL_REPEAT) and filtering (GL_LINEAR_MIPMAP_LINEAR for minification, GL_LINEAR for magnification). It generates mipmaps for the texture. Returns true on successful loading, false otherwise.
+*   **`Texture::bind(unsigned int textureUnit = 0) const`**: Activates the specified texture unit (`glActiveTexture(GL_TEXTURE0 + textureUnit)`) and binds this texture (`glBindTexture(GL_TEXTURE_2D, textureID)`) to it, making it the active texture for subsequent rendering operations.
 *   **`Texture::unbind()`**: Binds texture 0.
 
 ---
@@ -635,13 +630,9 @@ This file implements the `Window` class methods, providing the functionality for
         *   Returns the `window` pointer.
     *   **`isKeyPressed(int key) const` (bool):**
         *   Returns `glfwGetKey(window, key) == GLFW_PRESS`.
-    *   **`enableMouseCapture(bool enable)`:**
-        *   Contains commented-out code for enabling/disabling mouse cursor capture using `glfwSetInputMode(window, GLFW_CURSOR_DISABLED/NORMAL)`.
-        *   A disclaimer notes this functionality is currently disabled due to potential issues with window managers.
-    *   **`getMouseOffset(double& x, double& y)`:**
-        *   Assigns `xOffset` to `x` and `yOffset` to `y`.
-    *   **`resetMouseOffset()`:**
-        *   Sets `xOffset` and `yOffset` to 0.0.
+    *   **`enableMouseCapture(bool enable)`**: Enables or disables mouse cursor capture. If enabled, the cursor is hidden and locked to the window (`GLFW_CURSOR_DISABLED`), allowing for continuous mouse movement for camera control. If disabled, the cursor is made visible and behaves normally (`GLFW_CURSOR_NORMAL`). This is now actively used.
+    *   **`getMouseOffset(double& x, double& y)`**: Retrieves the calculated mouse movement offsets (`xOffset`, `yOffset`) since the last call.
+    *   **`resetMouseOffset()`**: Resets `xOffset` and `yOffset` to 0.0, typically called after processing mouse input for a frame.
     *   **Static Method `framebufferSizeCallback(GLFWwindow* window, int width, int height)`:**
         *   `glViewport(0, 0, width, height)`: Updates the OpenGL viewport when the window\'s framebuffer size changes.
     *   **Static Method `keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)`:**
@@ -671,35 +662,18 @@ This file implements the `Window` class methods, providing the functionality for
 ---
 
 ### `src/world.cpp` in `src/`
-This file implements the `World` class methods. It manages chunk loading, unloading, rendering, and provides access to blocks within the world. It uses a background worker thread for chunk processing.
-
-*   **`CHUNK_DATA_DIR` (const std::string)**: (As previously documented)
-*   **`World(int renderDistance)` (Constructor)**: Initializes `worldSeed_`, `worldDataPath_`, starts `workerThread_`. (As previously documented)
-*   **`~World()` (Destructor)**: Signals worker thread, joins it, saves chunks. (As previously documented)
-*   **`workerThreadFunction()`**: (As previously documented - waits on condition variable, executes tasks)
-*   **`addTask(...)`**: (As previously documented - locks mutex, pushes task, notifies)
-*   **`update(const Camera& camera)`**: (As previously documented - identifies active chunks, sorts needed chunks by distance, queues `ensureInitialized` task, unloads old chunks)
-*   **`render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera)`**: Renders all initialized chunks.
-    *   Skips chunks if `!chunk->isInitialized()`.
-    *   Calls `chunk->renderSurface(projection, view)` for every initialized chunk to draw its optimized mesh.
-    *   Includes optional periodic debug output to `std::cout` showing number of rendered chunks vs. total, and player's chunk position.
-*   **`getChunkAt(int chunkX, int chunkZ)` (std::shared_ptr<Chunk>)**: Returns chunk only if `it->second->isInitialized()` is true. (As previously documented)
-*   **`addChunk(...)`**: (As previously documented - creates placeholder, queues `ensureInitialized`)
-*   **`worldToChunkCoords(...)` (glm::ivec2)**: (As previously documented)
-*   **`getBlockAtWorldPos(...)` (std::shared_ptr<Block>)**: (As previously documented)
-*   **`saveAllChunks() const`**: (As previously documented)
+This file implements the `World` class methods. Manages chunks, including loading, unloading, and rendering.
+*   **`update(const Camera& camera)`:**
+    *   Most `std::cout` messages (player chunk changes, chunk unloads, initialization progress) are commented out to reduce console output.
+*   **`render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera, bool wireframeState)`:**
+    *   Accepts `wireframeState`.
+    *   Passes `wireframeState` to `chunk->renderSurface()`.
+    *   Periodic render statistics in console are now commented out.
 
 ---
+*This is a summary of key changes. Other files like `headers/window.h`, `src/window.cpp`, `headers/camera.h`, `src/camera.cpp`, `headers/texture.h`, `src/texture.cpp`, `headers/shader.h`, `src/shader.cpp` are assumed to be largely unchanged by this specific set of modifications unless mentioned. Review their respective sections if other changes were made.*
 
-### `shaders/vertex.glsl` in `shaders/`
-This file likely contains the GLSL code for the vertex shader used by the application. Vertex shaders are responsible for processing individual vertices, performing transformations (like model-view-projection), and passing data (like texture coordinates) to the next stage in the graphics pipeline.
-*(Note: Content not read, this is a general description)*
-
----
-
-### `shaders/fragment.glsl` in `shaders/`
-This file likely contains the GLSL code for the fragment shader (also known as a pixel shader). Fragment shaders are responsible for determining the final color of each pixel on the screen. This typically involves texture sampling, lighting calculations, and other effects.
-*(Note: Content not read, this is a general description)*
+(The rest of the documentation guide, like Key Components, Known Issues, etc., would follow, updated as needed.)
 
 
 ---

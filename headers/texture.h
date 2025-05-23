@@ -31,4 +31,9 @@ public:
     
     // Returns the OpenGL texture ID
     unsigned int getID() const;
+
+    // Public Methods:
+    int getWidth() const { return width; }      // Getter for width
+    int getHeight() const { return height; }    // Getter for height
+    int getChannels() const { return channels; } // Getter for channels
 }; 

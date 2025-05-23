@@ -94,7 +94,7 @@ public:
     bool isInitialized() const;
     
     // Render the chunk's surface mesh
-    void renderSurface(const glm::mat4& projection, const glm::mat4& view) const;
+    void renderSurface(const glm::mat4& projection, const glm::mat4& view, bool wireframeState) const;
     
     // Render all blocks individually (for the current player chunk)
     void renderAllBlocks(const glm::mat4& projection, const glm::mat4& view);

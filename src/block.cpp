@@ -2,6 +2,7 @@
 #include <iostream>
 #include <glm/gtc/type_ptr.hpp> // For glm::value_ptr
 #include <filesystem>
+#include "../headers/texture.h" // Make sure Texture header is included for Block::spritesheetTexture
 
 // Vertex shader source code
 const char* vertexShaderSource = R"(
@@ -34,7 +35,10 @@ const char* fragmentShaderSource = R"(
     
     void main() {
         if (useTexture) {
-            FragColor = texture(blockTexture, TexCoord);
+            vec4 texColor = texture(blockTexture, TexCoord);
+            if(texColor.a < 0.1) 
+                discard;
+            FragColor = texColor;
         } else {
             // Fallback color if no texture (can use blockColor uniform)
              FragColor = vec4(blockColor, 1.0);
@@ -44,8 +48,10 @@ const char* fragmentShaderSource = R"(
     }
 )";
 
-// Define static member
+// Define static members
 GLuint Block::shaderProgram = 0;
+Texture Block::spritesheetTexture; // Default constructor for Texture
+bool Block::spritesheetLoaded = false;
 
 // Helper function for compiling/linking (can be static inside .cpp)
 // Moved from Block class to be a static helper here, or part of InitBlockShader
@@ -192,7 +198,7 @@ void Block::CleanupBlockShader() {
 }
 
 Block::Block(const glm::vec3& position, const glm::vec3& color, float size)
-    : position(position), color(color), size(size) 
+    : position(position), color(color), size(size), hasTexture(false) 
       // Other members initialized in header (C++11 onwards)
       /* VAO(0), VBO(0), EBO(0), texCoordVBO(0), shaderProgram(0), 
          hasTexture(false), speed(0.05f) */
@@ -350,10 +356,8 @@ void Block::shareTextureAndShaderFrom(const Block& other) {
     // shaderProgram = other.getShaderProgram(); // No longer needed to copy shaderProgram, it's static
 }
 
-void Block::move(float dx, float dy, float dz) {
-    position.x += dx * speed;
-    position.y += dy * speed;
-    position.z += dz * speed;
+void Block::move(const glm::vec3& offset, float deltaTime) {
+    position += offset * speed * deltaTime;
 }
 
 void Block::setPosition(const glm::vec3& newPosition) {
@@ -402,4 +406,19 @@ void Block::setShaderUniforms(const glm::mat4& projection, const glm::mat4& view
          // Pass the block's color if not using texture
          glUniform3fv(glGetUniformLocation(Block::shaderProgram, "blockColor"), 1, glm::value_ptr(color));
      }
+}
+
+// New static method to initialize the global spritesheet
+void Block::InitSpritesheet(const std::string& path) {
+    if (Block::spritesheetLoaded) {
+        // std::cout << "Global spritesheet already loaded." << std::endl; // Keep console clean
+        return;
+    }
+    if (Block::spritesheetTexture.loadFromFile(path)) {
+        std::cout << "Successfully loaded global spritesheet: " << path << " with ID: " << Block::spritesheetTexture.getID() << std::endl;
+        Block::spritesheetLoaded = true;
+    } else {
+        std::cerr << "ERROR: Failed to load global spritesheet: " << path << std::endl;
+        Block::spritesheetLoaded = false; 
+    }
 }

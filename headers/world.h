@@ -81,7 +81,7 @@ public:
     void update(const Camera& camera);
     
     // Render visible chunks around the camera
-    void render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera);
+    void render(const glm::mat4& projection, const glm::mat4& view, const Camera& camera, bool wireframeState);
     
     // Get chunk at the given CHUNK coordinates (if it exists)
     std::shared_ptr<Chunk> getChunkAt(int chunkX, int chunkZ);

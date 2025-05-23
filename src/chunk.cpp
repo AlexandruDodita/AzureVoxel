@@ -160,23 +160,49 @@ void Chunk::buildSurfaceMesh(const World* world) {
                     }
 
                     if (shouldRenderFace) {
-                        // Define vertices for this face (centered at block position)
+                        unsigned char blockType = blockDataForInitialization_[x][y][z].type;
+                        float uvPixelOffsetX = 0.0f;
+                        float uvPixelOffsetY = 0.0f;
+
+                        if (Block::spritesheetLoaded && Block::spritesheetTexture.getWidth() > 0 && Block::spritesheetTexture.getHeight() > 0) {
+                            if (blockType == 1) { // Stone
+                                uvPixelOffsetX = 0.0f; 
+                                uvPixelOffsetY = 0.0f; // Assuming stone is at (0,0) in the atlas
+                            } else if (blockType == 2) { // Grass
+                                uvPixelOffsetX = 80.0f; // Grass at (80,0)
+                                uvPixelOffsetY = 0.0f;
+                            } else if (blockType == 3) { // Dirt (Example - new type)
+                                uvPixelOffsetX = 160.0f; // Dirt at (160,0)
+                                uvPixelOffsetY = 0.0f;
+                            } else if (blockType == 4) { // Wood (Example - new type)
+                                uvPixelOffsetX = 0.0f;  // Wood at (0,80) on the next row
+                                uvPixelOffsetY = 80.0f;
+                            }
+                            // Add other block types as needed, ensuring their UVs are mapped correctly
+                        } else if (blockType != 0) {
+                            // std::cout << "Warning: Spritesheet not loaded, cannot set UVs for block type " << (int)blockType << std::endl; 
+                        }
+
                         for (int i = 0; i < 4; ++i) {
                             float vx = x + faceVertices[face][i][0];
                             float vy = y + faceVertices[face][i][1];
                             float vz = z + faceVertices[face][i][2];
                             
-                            // Add vertex position (3 floats)
                             meshVertices.push_back(vx);
                             meshVertices.push_back(vy);
                             meshVertices.push_back(vz);
                             
-                            // Add texture coordinates (2 floats)
-                            meshVertices.push_back(texCoords[i][0]);
-                            meshVertices.push_back(texCoords[i][1]);
+                            if (Block::spritesheetLoaded && Block::spritesheetTexture.getWidth() > 0 && Block::spritesheetTexture.getHeight() > 0) {
+                                float actualU = (uvPixelOffsetX + texCoords[i].x * 80.0f) / Block::spritesheetTexture.getWidth();
+                                float actualV = (uvPixelOffsetY + texCoords[i].y * 80.0f) / Block::spritesheetTexture.getHeight();
+                                meshVertices.push_back(actualU);
+                                meshVertices.push_back(actualV);
+                            } else {
+                                meshVertices.push_back(texCoords[i].x); // Fallback: full texture UVs
+                                meshVertices.push_back(texCoords[i].y);
+                            }
                         }
                         
-                        // Add indices for the face (two triangles)
                         meshIndices.push_back(vertexIndexOffset);
                         meshIndices.push_back(vertexIndexOffset + 1);
                         meshIndices.push_back(vertexIndexOffset + 2);
@@ -193,7 +219,7 @@ void Chunk::buildSurfaceMesh(const World* world) {
 
     // Early exit if no vertices to render
     if (meshVertices.empty()) {
-        std::cout << "No faces to render for chunk at " << position.x << "," << position.z << std::endl;
+        // std::cout << "No faces to render for chunk at " << position.x << "," << position.z << std::endl; // Keep commented
         surfaceMesh.indexCount = 0;
         surfaceMesh.VAO = 0;
         needsRebuild = false;
@@ -202,7 +228,7 @@ void Chunk::buildSurfaceMesh(const World* world) {
 
     // Create placeholder blocks if we don't have any yet to ensure shaders are initialized
     if (Block::shaderProgram == 0) {
-        std::cout << "WARNING: Block shader not initialized yet. Initializing now." << std::endl;
+        // std::cout << "WARNING: Block shader not initialized yet. Initializing now." << std::endl; // Keep commented
         Block::InitBlockShader();
     }
 
@@ -214,7 +240,7 @@ void Chunk::buildSurfaceMesh(const World* world) {
     
     // Check OpenGL context
     if (glfwGetCurrentContext() == nullptr) {
-        std::cerr << "CRITICAL ERROR: No OpenGL context is current during mesh building!" << std::endl;
+        std::cerr << "CRITICAL ERROR: No OpenGL context is current during mesh building! Chunk: " << position.x << "," << position.z << std::endl; // Keep critical errors
         return;
     }
     
@@ -225,25 +251,8 @@ void Chunk::buildSurfaceMesh(const World* world) {
     glGenVertexArrays(1, &vao);
     GLenum error = glGetError();
     if (error != GL_NO_ERROR || vao == 0) {
-        std::cerr << "CRITICAL ERROR: Failed to generate VAO for chunk at " << position.x << "," << position.z << std::endl;
-        std::cerr << "OpenGL error after glGenVertexArrays: " << error << std::endl;
-        
-        // Additional debugging info
-        std::cout << "DEBUG: OpenGL context: " << glfwGetCurrentContext() << std::endl;
-        std::cout << "DEBUG: OpenGL version: " << glGetString(GL_VERSION) << std::endl;
-        std::cout << "DEBUG: GLX_MESA_query_renderer: " << (glGetStringi != nullptr ? "supported" : "not supported") << std::endl;
-        
-        // Try a second time after a short delay
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        std::cout << "Retrying VAO generation..." << std::endl;
-        glGenVertexArrays(1, &vao);
-        error = glGetError();
-        if (error != GL_NO_ERROR || vao == 0) {
-            std::cerr << "CRITICAL ERROR: Retry failed. VAO generation still failed with error: " << error << std::endl;
-            return;
-        } else {
-            std::cout << "Retry successful! VAO: " << vao << std::endl;
-        }
+        std::cerr << "CRITICAL ERROR: Failed to generate VAO for chunk at " << position.x << "," << position.z << " OpenGL error: " << error << std::endl; // Keep critical
+        return; // Simplified retry logic, just return if first fails
     }
     
     // Bind VAO first to capture all subsequent bindings
@@ -253,7 +262,7 @@ void Chunk::buildSurfaceMesh(const World* world) {
     glGenBuffers(1, &vbo);
     error = glGetError();
     if (error != GL_NO_ERROR || vbo == 0) {
-        std::cerr << "ERROR: Failed to generate VBO." << std::endl;
+        std::cerr << "ERROR: Failed to generate VBO for chunk " << position.x << "," << position.z << ". Error: " << error << std::endl; // Keep critical
         glDeleteVertexArrays(1, &vao);
         return;
     }
@@ -265,7 +274,7 @@ void Chunk::buildSurfaceMesh(const World* world) {
     glGenBuffers(1, &ebo);
     error = glGetError();
     if (error != GL_NO_ERROR || ebo == 0) {
-        std::cerr << "ERROR: Failed to generate EBO." << std::endl;
+        std::cerr << "ERROR: Failed to generate EBO for chunk " << position.x << "," << position.z << ". Error: " << error << std::endl; // Keep critical
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
         return;
@@ -290,7 +299,7 @@ void Chunk::buildSurfaceMesh(const World* world) {
     // Check for any OpenGL errors
     error = glGetError();
     if (error != GL_NO_ERROR) {
-        std::cerr << "OpenGL error after creating mesh resources: " << error << std::endl;
+        std::cerr << "OpenGL error after creating mesh resources for chunk " << position.x << "," << position.z << ": " << error << std::endl; // Keep critical
         glDeleteBuffers(1, &ebo);
         glDeleteBuffers(1, &vbo);
         glDeleteVertexArrays(1, &vao);
@@ -303,68 +312,63 @@ void Chunk::buildSurfaceMesh(const World* world) {
     surfaceMesh.EBO = ebo;
     surfaceMesh.indexCount = meshIndices.size();
     
-    std::cout << "Successfully built mesh for chunk at " << position.x << "," << position.z 
-              << " with " << meshIndices.size() / 6 << " faces, VAO=" << surfaceMesh.VAO << std::endl;
+    // std::cout << "Successfully built mesh for chunk at " << position.x << "," << position.z << " with " << meshIndices.size() / 6 << " faces, VAO=" << surfaceMesh.VAO << std::endl; // Keep commented
     
     // Mark as no longer needing rebuild
     needsRebuild = false;
 }
 
 // Render the pre-built surface mesh using a single draw call
-void Chunk::renderSurface(const glm::mat4& projection, const glm::mat4& view) const {
+void Chunk::renderSurface(const glm::mat4& projection, const glm::mat4& view, bool wireframeState) const {
     if (surfaceMesh.indexCount == 0 || surfaceMesh.VAO == 0) {
         return; 
     }
-
-    // Use the static block shader program
     if (Block::shaderProgram == 0) {
-        std::cerr << "ERROR: Block shader program is not initialized. Cannot render chunk." << std::endl;
         return;
     }
-    
-    // Force-clear any existing OpenGL errors before rendering
     while (glGetError() != GL_NO_ERROR) {}
     
-    // Use shader program
     glUseProgram(Block::shaderProgram);
     
-    // Create model matrix for this chunk's position
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, position);
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), position);
     
-    // Set uniforms (model, view, projection)
     GLint modelLoc = glGetUniformLocation(Block::shaderProgram, "model");
-    if (modelLoc != -1) {
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-    }
+    if (modelLoc != -1) glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     
     GLint viewLoc = glGetUniformLocation(Block::shaderProgram, "view");
-    if (viewLoc != -1) {
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-    }
+    if (viewLoc != -1) glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     
     GLint projLoc = glGetUniformLocation(Block::shaderProgram, "projection");
-    if (projLoc != -1) {
-        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-    }
+    if (projLoc != -1) glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
     
-    // Set default color since we're having texture issues
-    GLint blockColorLoc = glGetUniformLocation(Block::shaderProgram, "blockColor");
-    if (blockColorLoc != -1) {
-        // Use a different color for each chunk to make them distinct
-        //float r = (static_cast<int>(position.x) * 16) % 255 / 255.0f;
-        //float g = (static_cast<int>(position.z) * 16) % 255 / 255.0f;
-        //float b = 0.6f; // Keep blue consistent for a better look
-        glUniform3f(blockColorLoc, 1.0f, 0.0f, 0.0f); // Bright Red
-    }
-    
-    // Disable textures for now until we fix texture issues
     GLint useTextureLoc = glGetUniformLocation(Block::shaderProgram, "useTexture");
-    if (useTextureLoc != -1) {
-        glUniform1i(useTextureLoc, 0); // false - don't use textures yet
+    GLint blockColorLoc = glGetUniformLocation(Block::shaderProgram, "blockColor");
+
+    if (wireframeState) {
+        if (useTextureLoc != -1) glUniform1i(useTextureLoc, 0); // Don't use texture in wireframe
+        if (blockColorLoc != -1) {
+            // Use a generic wireframe color, or vary by chunk position for debugging
+            float r = (static_cast<int>(position.x) * 0.1f) + 0.2f;
+            float g = (static_cast<int>(position.z) * 0.1f) + 0.2f;
+            float b = 0.8f;
+            glUniform3f(blockColorLoc, r, g, b); // Blue-ish tint for wireframe
+        }
+    } else {
+        if (useTextureLoc != -1) {
+            if (Block::spritesheetLoaded && Block::spritesheetTexture.getID() != 0) {
+                glUniform1i(useTextureLoc, 1); 
+                glActiveTexture(GL_TEXTURE0); 
+                Block::spritesheetTexture.bind(0); 
+                glUniform1i(glGetUniformLocation(Block::shaderProgram, "blockTexture"), 0); 
+            } else {
+                glUniform1i(useTextureLoc, 0); 
+                if (blockColorLoc != -1) {
+                    glUniform3f(blockColorLoc, 0.5f, 0.2f, 0.8f); // Fallback purple
+                }
+            }
+        }
     }
     
-    // Bind VAO and draw
     glBindVertexArray(surfaceMesh.VAO);
     glDrawElements(GL_TRIANGLES, surfaceMesh.indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
@@ -372,7 +376,7 @@ void Chunk::renderSurface(const glm::mat4& projection, const glm::mat4& view) co
     // Check for OpenGL errors after rendering
     GLenum error = glGetError();
     if (error != GL_NO_ERROR) {
-        std::cerr << "OpenGL error after rendering chunk at " << position.x << "," << position.z << ": " << error << std::endl;
+        std::cerr << "OpenGL error after rendering chunk at " << position.x << "," << position.z << ": " << error << std::endl; // Keep critical
     }
 }
 
@@ -498,11 +502,10 @@ bool Chunk::saveToFile(const std::string& directoryPath) const {
 bool Chunk::loadFromFile_DataOnly(const std::string& directoryPath, World* world) {
     std::string filePath = directoryPath + "/" + getChunkFileName();
     struct stat buffer;
-    if (stat(filePath.c_str(), &buffer) != 0) return false; // File doesn't exist
-    
-    std::ifstream inFile(filePath, std::ios::binary | std::ios::ate); // Open at end to get size
+    if (stat(filePath.c_str(), &buffer) != 0) return false; 
+    std::ifstream inFile(filePath, std::ios::binary | std::ios::ate); 
     if (!inFile.is_open()) {
-        std::cerr << "Error: Could not open chunk file for reading: " << filePath << std::endl;
+        // std::cerr << "Error: Could not open chunk file for reading: " << filePath << std::endl; // Keep commented
         return false;
     }
     std::streamsize size = inFile.tellg();
@@ -517,7 +520,7 @@ bool Chunk::loadFromFile_DataOnly(const std::string& directoryPath, World* world
         return false;
     }
 
-    std::cout << "DataOnly: Loading chunk from file: " << filePath << std::endl;
+    // std::cout << "DataOnly: Loading chunk from file: " << filePath << std::endl; // Keep commented
     
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
@@ -559,6 +562,7 @@ bool Chunk::isInitialized() const {
 
 // New: Data-only terrain generation (placeholder implementation)
 void Chunk::generateTerrain_DataOnly(int seed) {
+    // std::cout << "DataOnly: Generating terrain for chunk at " << position.x << "," << position.z << std::endl; // Keep commented
     std::cout << "DataOnly: Generating terrain for chunk at " << position.x << "," << position.z << std::endl;
     std::vector<int> heightMap(CHUNK_SIZE_X * CHUNK_SIZE_Z);
     for (int x = 0; x < CHUNK_SIZE_X; x++) {
@@ -596,35 +600,32 @@ void Chunk::openglInitialize(World* world) {
     // Ensure an OpenGL context is current on THIS thread
     if (glfwGetCurrentContext() == nullptr) {
         std::cerr << "CRITICAL ERROR: No OpenGL context current on main thread for openglInitialize! Chunk: " 
-                  << position.x << "," << position.z << std::endl;
+                  << position.x << "," << position.z << std::endl; // Keep critical
         return; // Cannot proceed
     }
 
+    // std::cout << "MainThread: OpenGL-Initializing chunk at " << position.x << "," << position.z << std::endl; // Keep commented
     std::cout << "MainThread: OpenGL-Initializing chunk at " << position.x << "," << position.z << std::endl;
     
     if (Block::shaderProgram == 0) {
-        std::cout << "MainThread: Initializing block shader program..." << std::endl;
+        // std::cout << "MainThread: Initializing block shader program..." << std::endl; // Keep console cleaner
         Block::InitBlockShader();
         if (Block::shaderProgram == 0) {
-            std::cerr << "CRITICAL ERROR: Failed to initialize block shader program! Cannot initialize chunk." << std::endl;
+            std::cerr << "CRITICAL ERROR: Failed to initialize block shader program! Cannot initialize chunk." << std::endl; // Keep critical
             return;
         }
     }
-
-    // Create template blocks for textures (OpenGL calls, must be on main thread)
-    Block stoneBlockTemplate(glm::vec3(0.0f), glm::vec3(0.5f), 1.0f);
-    if (!stoneBlockTemplate.loadTexture("res/textures/Spritesheet.PNG", 0, 0, 16, 16)) {
-        std::cerr << "Warning: Failed to load stone texture for chunk " << position.x << "," << position.z << std::endl;
-        // Continue without texture, or handle error as critical
-    }
-
-    Block grassBlockTemplate(glm::vec3(0.0f), glm::vec3(0.2f, 0.8f, 0.2f), 1.0f);
-    grassBlockTemplate.shareTextureAndShaderFrom(stoneBlockTemplate); // Assumes stoneBlockTemplate shader is valid
-    if (!grassBlockTemplate.loadTexture("res/textures/Spritesheet.PNG", 16, 0, 16, 16)) {
-        std::cerr << "Warning: Failed to load grass texture for chunk " << position.x << "," << position.z << std::endl;
+    // Ensure global spritesheet is loaded (it should be by main, but check is safe)
+    if (!Block::spritesheetLoaded) { 
+        // std::cout << "MainThread: Attempting to initialize global spritesheet from openglInitialize..." << std::endl;
+        Block::InitSpritesheet("res/textures/Spritesheet.PNG");
+        if (!Block::spritesheetLoaded) {
+            std::cerr << "CRITICAL ERROR: Failed to load global spritesheet in openglInitialize! Chunk texturing might fail." << std::endl; // Keep critical
+        }
     }
 
     // Populate `this->blocks_` using `this->blockDataForInitialization_`
+    // No need to load individual textures for blocks here, as the chunk mesh uses the global atlas.
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
         for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
             for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
@@ -632,12 +633,10 @@ void Chunk::openglInitialize(World* world) {
                 glm::vec3 blockWorldPos = this->position + glm::vec3(x, y, z);
                 
                 if (info.type == 1) { // Stone
-                    auto block = std::make_shared<Block>(blockWorldPos, stoneBlockTemplate.getColor(), 1.0f);
-                    block->shareTextureAndShaderFrom(stoneBlockTemplate);
+                    auto block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f, 0.5f, 0.5f), 1.0f); 
                     this->blocks_[x][y][z] = block;
                 } else if (info.type == 2) { // Grass
-                    auto block = std::make_shared<Block>(blockWorldPos, grassBlockTemplate.getColor(), 1.0f);
-                    block->shareTextureAndShaderFrom(grassBlockTemplate);
+                    auto block = std::make_shared<Block>(blockWorldPos, glm::vec3(0.2f, 0.8f, 0.2f), 1.0f); 
                     this->blocks_[x][y][z] = block;
                 } else { // Air (type 0 or other)
                     this->blocks_[x][y][z] = nullptr;
@@ -647,6 +646,7 @@ void Chunk::openglInitialize(World* world) {
     }
 
     if (needsRebuild) {
+        // std::cout << "MainThread: Building surface mesh for chunk " << position.x << "," << position.z << std::endl; // Keep commented
         std::cout << "MainThread: Building surface mesh for chunk " << position.x << "," << position.z << std::endl;
         buildSurfaceMesh(world); 
     }
@@ -657,6 +657,7 @@ void Chunk::openglInitialize(World* world) {
 
     isInitialized_ = true;
     needsRebuild = false; // Mesh has been built (or attempted)
+    // std::cout << "Chunk at " << position.x << "," << position.z << " OpenGL-initialized. VAO=" << surfaceMesh.VAO << std::endl; // Keep commented
     std::cout << "Chunk at " << position.x << "," << position.z << " OpenGL-initialized. VAO=" << surfaceMesh.VAO << std::endl;
 }
 
