@@ -20,6 +20,7 @@ set(SOURCES
     main.cpp
     src/window.cpp
     src/block.cpp
+    src/block_registry.cpp
     src/texture.cpp
     src/camera.cpp
     src/shader.cpp
@@ -33,6 +34,7 @@ set(SOURCES
 set(HEADERS
     headers/window.h
     headers/block.h
+    headers/block_registry.h
     headers/texture.h
     headers/camera.h
     headers/shader.h
@@ -72,6 +74,13 @@ file(COPY
 
 # Copy resource directory to the build directory
 file(COPY ${CMAKE_SOURCE_DIR}/res DESTINATION ${CMAKE_BINARY_DIR})
+
+# Copy individual resource files that might be updated
+file(COPY 
+    ${CMAKE_SOURCE_DIR}/res/blocks/example_blocks.txt
+    ${CMAKE_SOURCE_DIR}/res/blocks/blocks.json
+    DESTINATION ${CMAKE_BINARY_DIR}/res/blocks
+)
 
 # Ensure external directory is available for stb_image.h (if not using a system-wide one)
 # This assumes stb_image.h is directly in external/

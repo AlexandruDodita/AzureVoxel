@@ -12,6 +12,7 @@
 #include "headers/texture.h"
 #include "headers/camera.h"
 #include "headers/block.h"
+#include "headers/block_registry.h"
 #include "headers/world.h"
 #include "headers/planet.h"
 #include "headers/crosshair.h"
@@ -57,10 +58,20 @@ int main() {
     // Setup Dear ImGui context (if you add ImGui later)
     // ...
 
+    // Initialize Block Registry System
+    std::cout << "Initializing Block Registry System..." << std::endl;
+    if (!BlockRegistry::getInstance().initialize("res/blocks/")) {
+        std::cerr << "Failed to initialize Block Registry. Continuing with defaults..." << std::endl;
+    }
+    
+    // Print registry statistics for debugging
+    BlockRegistry::getInstance().printRegistryStats();
+
     // Initialize Shaders and Textures for Blocks (globally)
     Block::InitBlockShader();
     if (Block::shaderProgram == 0) {
         std::cerr << "Failed to initialize block shader program. Exiting." << std::endl;
+        BlockRegistry::getInstance().shutdown();
         glfwTerminate();
         return -1;
     }
@@ -151,6 +162,7 @@ int main() {
     // Cleanup
     std::cout << "Cleaning up resources..." << std::endl;
     Block::CleanupBlockShader();
+    BlockRegistry::getInstance().shutdown();
     delete crosshair;
     delete world;
     delete camera;

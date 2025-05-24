@@ -5,6 +5,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/AzureVoxel.dir/main.cpp.o.d"
   "CMakeFiles/AzureVoxel.dir/src/block.cpp.o"
   "CMakeFiles/AzureVoxel.dir/src/block.cpp.o.d"
+  "CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o"
+  "CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o.d"
   "CMakeFiles/AzureVoxel.dir/src/camera.cpp.o"
   "CMakeFiles/AzureVoxel.dir/src/camera.cpp.o.d"
   "CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o"

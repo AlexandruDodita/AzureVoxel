@@ -1,7 +1,6 @@
 CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
- /home/alexd/Desktop/Projects/AzureVoxel/src/chunk.cpp \
- /usr/include/stdc-predef.h \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/chunk.h \
+ /home/alexd/spg/AzureVoxel/src/chunk.cpp /usr/include/stdc-predef.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/chunk.h \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -301,7 +300,7 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
  /usr/include/glm/detail/type_half.inl /usr/include/glm/integer.hpp \
  /usr/include/glm/detail/func_integer.inl /usr/include/GL/glew.h \
  /usr/include/GL/glu.h /usr/include/GL/gl.h \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/block.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/block.h \
  /usr/include/GLFW/glfw3.h /usr/include/glm/gtc/matrix_transform.hpp \
  /usr/include/glm/ext/matrix_projection.hpp \
  /usr/include/glm/gtc/constants.hpp \
@@ -314,8 +313,8 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
  /usr/include/glm/ext/matrix_transform.hpp \
  /usr/include/glm/ext/matrix_transform.inl \
  /usr/include/glm/gtc/matrix_transform.inl \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/texture.h \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/shader.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/texture.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/shader.h \
  /usr/include/c++/13/fstream /usr/include/c++/13/istream \
  /usr/include/c++/13/ios /usr/include/c++/13/bits/ios_base.h \
  /usr/include/c++/13/bits/locale_classes.h \
@@ -340,7 +339,7 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
  /usr/include/c++/13/bits/sstream.tcc /usr/include/c++/13/iostream \
  /usr/include/c++/13/optional \
  /usr/include/c++/13/bits/enable_special_members.h \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/world.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/world.h \
  /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
  /usr/include/c++/13/bits/this_thread_sleep.h \
  /usr/include/c++/13/bits/chrono.h /usr/include/c++/13/ratio \
@@ -361,8 +360,18 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
  /usr/include/c++/13/bits/algorithmfwd.h \
  /usr/include/c++/13/bits/uniform_int_dist.h \
  /usr/include/c++/13/condition_variable /usr/include/c++/13/atomic \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/camera.h \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/planet.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/camera.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/planet.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/block_registry.h \
+ /usr/include/c++/13/filesystem /usr/include/c++/13/bits/fs_fwd.h \
+ /usr/include/c++/13/bits/fs_path.h /usr/include/c++/13/locale \
+ /usr/include/c++/13/bits/locale_facets_nonio.h \
+ /usr/include/x86_64-linux-gnu/c++/13/bits/time_members.h \
+ /usr/include/x86_64-linux-gnu/c++/13/bits/messages_members.h \
+ /usr/include/libintl.h /usr/include/c++/13/bits/locale_facets_nonio.tcc \
+ /usr/include/c++/13/bits/locale_conv.h /usr/include/c++/13/iomanip \
+ /usr/include/c++/13/bits/quoted_string.h /usr/include/c++/13/codecvt \
+ /usr/include/c++/13/bits/fs_dir.h /usr/include/c++/13/bits/fs_ops.h \
  /usr/include/glm/gtc/type_ptr.hpp /usr/include/glm/gtc/quaternion.hpp \
  /usr/include/glm/ext/vector_relational.hpp \
  /usr/include/glm/ext/vector_relational.inl \

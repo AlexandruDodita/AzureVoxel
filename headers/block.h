@@ -9,6 +9,9 @@
 #include <memory>
 #include <string>
 
+// Forward declaration to avoid circular dependency
+class BlockRegistry;
+
 class Block {
 private:
     // OpenGL objects for individual block rendering (less common with chunk meshing)
@@ -18,6 +21,7 @@ private:
     glm::vec3 position;
     glm::vec3 color;
     float size;
+    uint16_t block_type_id = 0;  // New: block type ID for registry lookup
     
     // Texture (can be shared or represent a sub-texture from an atlas)
     Texture texture; // For individual block texture or as a template
@@ -37,9 +41,14 @@ public:
     static void InitSpritesheet(const std::string& path);
     // Static method to clean up the shared shader program
     static void CleanupBlockShader();
-    static bool isTypeSolid(unsigned char blockType); // Added for generic solidity check
+    
+    // Backward compatibility methods - these now use the registry
+    static bool isTypeSolid(unsigned char blockType);
+    static bool isTypeSolid(uint16_t blockTypeId);
 
+    // Constructors
     Block(const glm::vec3& position, const glm::vec3& color = glm::vec3(0.5f), float size = 1.0f);
+    Block(const glm::vec3& position, uint16_t blockType, const glm::vec3& color = glm::vec3(0.5f), float size = 1.0f);
     ~Block();
     
     void init(); // Initializes VAO/VBO/EBO for individual block rendering
@@ -47,6 +56,17 @@ public:
     
     void move(const glm::vec3& offset, float deltaTime); // Consistent with documentation
     void setPosition(const glm::vec3& newPosition);
+    
+    // Block type management
+    void setBlockType(uint16_t typeId);
+    uint16_t getBlockType() const { return block_type_id; }
+    
+    // Registry-powered property queries
+    bool isSolid() const;
+    bool isTransparent() const;
+    bool isLightSource() const;
+    uint8_t getLightLevel() const;
+    std::string getBlockName() const;
     
     // Texture methods
     bool loadTexture(const std::string& filepath); // Load a unique texture for this block instance
@@ -68,7 +88,4 @@ public:
     void useBlockShader() const; 
     void bindBlockTexture() const; 
     void setShaderUniforms(const glm::mat4& projection, const glm::mat4& view, const glm::mat4& model) const; 
-
-    bool isTransparent() const; 
-    bool isLightSource() const; 
 };

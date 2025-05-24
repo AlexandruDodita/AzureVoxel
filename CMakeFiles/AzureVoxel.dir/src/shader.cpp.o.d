@@ -1,7 +1,6 @@
 CMakeFiles/AzureVoxel.dir/src/shader.cpp.o: \
- /home/alexd/Desktop/Projects/AzureVoxel/src/shader.cpp \
- /usr/include/stdc-predef.h \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/shader.h \
+ /home/alexd/spg/AzureVoxel/src/shader.cpp /usr/include/stdc-predef.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/shader.h \
  /usr/include/GL/glew.h /usr/include/c++/13/cstddef \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

@@ -1,7 +1,6 @@
 CMakeFiles/AzureVoxel.dir/src/camera.cpp.o: \
- /home/alexd/Desktop/Projects/AzureVoxel/src/camera.cpp \
- /usr/include/stdc-predef.h \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/camera.h \
+ /home/alexd/spg/AzureVoxel/src/camera.cpp /usr/include/stdc-predef.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/camera.h \
  /usr/include/GL/glew.h /usr/include/c++/13/cstddef \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

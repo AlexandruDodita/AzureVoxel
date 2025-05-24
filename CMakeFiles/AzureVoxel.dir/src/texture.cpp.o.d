@@ -1,7 +1,6 @@
 CMakeFiles/AzureVoxel.dir/src/texture.cpp.o: \
- /home/alexd/Desktop/Projects/AzureVoxel/src/texture.cpp \
- /usr/include/stdc-predef.h \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/texture.h \
+ /home/alexd/spg/AzureVoxel/src/texture.cpp /usr/include/stdc-predef.h \
+ /home/alexd/spg/AzureVoxel/src/../headers/texture.h \
  /usr/include/GL/glew.h /usr/include/c++/13/cstddef \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -179,7 +178,7 @@ CMakeFiles/AzureVoxel.dir/src/texture.cpp.o: \
  /usr/include/c++/13/bits/fs_dir.h /usr/include/c++/13/bits/fs_ops.h \
  /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
  /usr/include/c++/13/bits/this_thread_sleep.h /usr/include/GLFW/glfw3.h \
- /home/alexd/Desktop/Projects/AzureVoxel/src/../external/stb_image.h \
+ /home/alexd/spg/AzureVoxel/src/../external/stb_image.h \
  /usr/include/c++/13/stdlib.h /usr/include/string.h \
  /usr/include/strings.h /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h \

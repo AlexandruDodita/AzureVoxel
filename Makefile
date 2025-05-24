@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/alexd/Desktop/Projects/AzureVoxel
+CMAKE_SOURCE_DIR = /home/alexd/spg/AzureVoxel
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/alexd/Desktop/Projects/AzureVoxel
+CMAKE_BINARY_DIR = /home/alexd/spg/AzureVoxel
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles /home/alexd/Desktop/Projects/AzureVoxel//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/spg/AzureVoxel/CMakeFiles /home/alexd/spg/AzureVoxel//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/alexd/spg/AzureVoxel/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -176,6 +176,30 @@ src/block.s: src/block.cpp.s
 src/block.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/block.cpp.s
 .PHONY : src/block.cpp.s
+
+src/block_registry.o: src/block_registry.cpp.o
+.PHONY : src/block_registry.o
+
+# target to build an object file
+src/block_registry.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o
+.PHONY : src/block_registry.cpp.o
+
+src/block_registry.i: src/block_registry.cpp.i
+.PHONY : src/block_registry.i
+
+# target to preprocess a source file
+src/block_registry.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.i
+.PHONY : src/block_registry.cpp.i
+
+src/block_registry.s: src/block_registry.cpp.s
+.PHONY : src/block_registry.s
+
+# target to generate assembly for a file
+src/block_registry.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AzureVoxel.dir/build.make CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.s
+.PHONY : src/block_registry.cpp.s
 
 src/camera.o: src/camera.cpp.o
 .PHONY : src/camera.o
@@ -384,6 +408,9 @@ help:
 	@echo "... src/block.o"
 	@echo "... src/block.i"
 	@echo "... src/block.s"
+	@echo "... src/block_registry.o"
+	@echo "... src/block_registry.i"
+	@echo "... src/block_registry.s"
 	@echo "... src/camera.o"
 	@echo "... src/camera.i"
 	@echo "... src/camera.s"

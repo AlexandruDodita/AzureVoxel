@@ -1,0 +1,88 @@
+{
+  "blocks": [
+    {
+      "id": "azurevoxel:cobblestone",
+      "numeric_id": 11,
+      "display_name": "Cobblestone",
+      "texture": "cobblestone",
+      "solid": true,
+      "transparent": false,
+      "hardness": 3.0,
+      "blast_resistance": 25.0,
+      "flammable": false,
+      "light_emission": 0
+    },
+    {
+      "id": "azurevoxel:sandstone",
+      "numeric_id": 12,
+      "display_name": "Sandstone",
+      "texture": "sandstone",
+      "solid": true,
+      "transparent": false,
+      "hardness": 2.5,
+      "blast_resistance": 20.0,
+      "flammable": false,
+      "light_emission": 0
+    },
+    {
+      "id": "azurevoxel:ice",
+      "numeric_id": 13,
+      "display_name": "Ice",
+      "texture": "ice",
+      "solid": true,
+      "transparent": true,
+      "hardness": 1.5,
+      "blast_resistance": 5.0,
+      "flammable": false,
+      "light_emission": 0
+    },
+    {
+      "id": "azurevoxel:obsidian",
+      "numeric_id": 14,
+      "display_name": "Obsidian",
+      "texture": "obsidian",
+      "solid": true,
+      "transparent": false,
+      "hardness": 5.0,
+      "blast_resistance": 50.0,
+      "flammable": false,
+      "light_emission": 0
+    },
+    {
+      "id": "azurevoxel:glowstone",
+      "numeric_id": 15,
+      "display_name": "Glowstone",
+      "texture": "glowstone",
+      "solid": true,
+      "transparent": false,
+      "hardness": 1.0,
+      "blast_resistance": 3.0,
+      "flammable": false,
+      "light_emission": 15
+    },
+    {
+      "id": "azurevoxel:lava",
+      "numeric_id": 16,
+      "display_name": "Lava",
+      "texture": "lava",
+      "solid": false,
+      "transparent": true,
+      "hardness": 0.0,
+      "blast_resistance": 0.0,
+      "flammable": false,
+      "light_emission": 12
+    },
+    {
+      "id": "azurevoxel:bedrock",
+      "numeric_id": 17,
+      "display_name": "Bedrock",
+      "texture": "bedrock",
+      "solid": true,
+      "transparent": false,
+      "hardness": -1.0,
+      "blast_resistance": 3600000.0,
+      "flammable": false,
+      "light_emission": 0
+    }
+  ]
+} 

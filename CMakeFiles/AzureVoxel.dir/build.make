@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/alexd/Desktop/Projects/AzureVoxel
+CMAKE_SOURCE_DIR = /home/alexd/spg/AzureVoxel
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/alexd/Desktop/Projects/AzureVoxel
+CMAKE_BINARY_DIR = /home/alexd/spg/AzureVoxel
 
 # Include any dependencies generated for this target.
 include CMakeFiles/AzureVoxel.dir/depend.make
@@ -72,148 +72,163 @@ include CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/main.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/main.cpp.o: main.cpp
 CMakeFiles/AzureVoxel.dir/main.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/AzureVoxel.dir/main.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/main.cpp.o -MF CMakeFiles/AzureVoxel.dir/main.cpp.o.d -o CMakeFiles/AzureVoxel.dir/main.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/main.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/AzureVoxel.dir/main.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/main.cpp.o -MF CMakeFiles/AzureVoxel.dir/main.cpp.o.d -o CMakeFiles/AzureVoxel.dir/main.cpp.o -c /home/alexd/spg/AzureVoxel/main.cpp
 
 CMakeFiles/AzureVoxel.dir/main.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/main.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/main.cpp > CMakeFiles/AzureVoxel.dir/main.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/main.cpp > CMakeFiles/AzureVoxel.dir/main.cpp.i
 
 CMakeFiles/AzureVoxel.dir/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/main.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/main.cpp -o CMakeFiles/AzureVoxel.dir/main.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/main.cpp -o CMakeFiles/AzureVoxel.dir/main.cpp.s
 
 CMakeFiles/AzureVoxel.dir/src/window.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/src/window.cpp.o: src/window.cpp
 CMakeFiles/AzureVoxel.dir/src/window.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/AzureVoxel.dir/src/window.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/window.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/window.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/window.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/src/window.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/AzureVoxel.dir/src/window.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/window.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/window.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/window.cpp.o -c /home/alexd/spg/AzureVoxel/src/window.cpp
 
 CMakeFiles/AzureVoxel.dir/src/window.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/window.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/src/window.cpp > CMakeFiles/AzureVoxel.dir/src/window.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/window.cpp > CMakeFiles/AzureVoxel.dir/src/window.cpp.i
 
 CMakeFiles/AzureVoxel.dir/src/window.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/window.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/src/window.cpp -o CMakeFiles/AzureVoxel.dir/src/window.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/window.cpp -o CMakeFiles/AzureVoxel.dir/src/window.cpp.s
 
 CMakeFiles/AzureVoxel.dir/src/block.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/src/block.cpp.o: src/block.cpp
 CMakeFiles/AzureVoxel.dir/src/block.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/AzureVoxel.dir/src/block.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/block.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/block.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/block.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/src/block.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/AzureVoxel.dir/src/block.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/block.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/block.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/block.cpp.o -c /home/alexd/spg/AzureVoxel/src/block.cpp
 
 CMakeFiles/AzureVoxel.dir/src/block.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/block.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/src/block.cpp > CMakeFiles/AzureVoxel.dir/src/block.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/block.cpp > CMakeFiles/AzureVoxel.dir/src/block.cpp.i
 
 CMakeFiles/AzureVoxel.dir/src/block.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/block.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/src/block.cpp -o CMakeFiles/AzureVoxel.dir/src/block.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/block.cpp -o CMakeFiles/AzureVoxel.dir/src/block.cpp.s
+
+CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
+CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o: src/block_registry.cpp
+CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o -c /home/alexd/spg/AzureVoxel/src/block_registry.cpp
+
+CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/block_registry.cpp > CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.i
+
+CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/block_registry.cpp -o CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.s
 
 CMakeFiles/AzureVoxel.dir/src/texture.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/src/texture.cpp.o: src/texture.cpp
 CMakeFiles/AzureVoxel.dir/src/texture.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/AzureVoxel.dir/src/texture.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/texture.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/texture.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/texture.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/src/texture.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/AzureVoxel.dir/src/texture.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/texture.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/texture.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/texture.cpp.o -c /home/alexd/spg/AzureVoxel/src/texture.cpp
 
 CMakeFiles/AzureVoxel.dir/src/texture.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/texture.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/src/texture.cpp > CMakeFiles/AzureVoxel.dir/src/texture.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/texture.cpp > CMakeFiles/AzureVoxel.dir/src/texture.cpp.i
 
 CMakeFiles/AzureVoxel.dir/src/texture.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/texture.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/src/texture.cpp -o CMakeFiles/AzureVoxel.dir/src/texture.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/texture.cpp -o CMakeFiles/AzureVoxel.dir/src/texture.cpp.s
 
 CMakeFiles/AzureVoxel.dir/src/camera.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/src/camera.cpp.o: src/camera.cpp
 CMakeFiles/AzureVoxel.dir/src/camera.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/AzureVoxel.dir/src/camera.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/camera.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/camera.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/camera.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/src/camera.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/AzureVoxel.dir/src/camera.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/camera.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/camera.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/camera.cpp.o -c /home/alexd/spg/AzureVoxel/src/camera.cpp
 
 CMakeFiles/AzureVoxel.dir/src/camera.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/camera.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/src/camera.cpp > CMakeFiles/AzureVoxel.dir/src/camera.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/camera.cpp > CMakeFiles/AzureVoxel.dir/src/camera.cpp.i
 
 CMakeFiles/AzureVoxel.dir/src/camera.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/camera.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/src/camera.cpp -o CMakeFiles/AzureVoxel.dir/src/camera.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/camera.cpp -o CMakeFiles/AzureVoxel.dir/src/camera.cpp.s
 
 CMakeFiles/AzureVoxel.dir/src/shader.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/src/shader.cpp.o: src/shader.cpp
 CMakeFiles/AzureVoxel.dir/src/shader.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/AzureVoxel.dir/src/shader.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/shader.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/shader.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/shader.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/src/shader.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/AzureVoxel.dir/src/shader.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/shader.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/shader.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/shader.cpp.o -c /home/alexd/spg/AzureVoxel/src/shader.cpp
 
 CMakeFiles/AzureVoxel.dir/src/shader.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/shader.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/src/shader.cpp > CMakeFiles/AzureVoxel.dir/src/shader.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/shader.cpp > CMakeFiles/AzureVoxel.dir/src/shader.cpp.i
 
 CMakeFiles/AzureVoxel.dir/src/shader.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/shader.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/src/shader.cpp -o CMakeFiles/AzureVoxel.dir/src/shader.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/shader.cpp -o CMakeFiles/AzureVoxel.dir/src/shader.cpp.s
 
 CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: src/chunk.cpp
 CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/src/chunk.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o -c /home/alexd/spg/AzureVoxel/src/chunk.cpp
 
 CMakeFiles/AzureVoxel.dir/src/chunk.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/chunk.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/src/chunk.cpp > CMakeFiles/AzureVoxel.dir/src/chunk.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/chunk.cpp > CMakeFiles/AzureVoxel.dir/src/chunk.cpp.i
 
 CMakeFiles/AzureVoxel.dir/src/chunk.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/chunk.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/src/chunk.cpp -o CMakeFiles/AzureVoxel.dir/src/chunk.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/chunk.cpp -o CMakeFiles/AzureVoxel.dir/src/chunk.cpp.s
 
 CMakeFiles/AzureVoxel.dir/src/world.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/src/world.cpp.o: src/world.cpp
 CMakeFiles/AzureVoxel.dir/src/world.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/AzureVoxel.dir/src/world.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/world.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/world.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/world.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/src/world.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/AzureVoxel.dir/src/world.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/world.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/world.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/world.cpp.o -c /home/alexd/spg/AzureVoxel/src/world.cpp
 
 CMakeFiles/AzureVoxel.dir/src/world.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/world.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/src/world.cpp > CMakeFiles/AzureVoxel.dir/src/world.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/world.cpp > CMakeFiles/AzureVoxel.dir/src/world.cpp.i
 
 CMakeFiles/AzureVoxel.dir/src/world.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/world.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/src/world.cpp -o CMakeFiles/AzureVoxel.dir/src/world.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/world.cpp -o CMakeFiles/AzureVoxel.dir/src/world.cpp.s
 
 CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o: src/crosshair.cpp
 CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/src/crosshair.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.o -c /home/alexd/spg/AzureVoxel/src/crosshair.cpp
 
 CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/src/crosshair.cpp > CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/crosshair.cpp > CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.i
 
 CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/src/crosshair.cpp -o CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/crosshair.cpp -o CMakeFiles/AzureVoxel.dir/src/crosshair.cpp.s
 
 CMakeFiles/AzureVoxel.dir/src/planet.cpp.o: CMakeFiles/AzureVoxel.dir/flags.make
 CMakeFiles/AzureVoxel.dir/src/planet.cpp.o: src/planet.cpp
 CMakeFiles/AzureVoxel.dir/src/planet.cpp.o: CMakeFiles/AzureVoxel.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/AzureVoxel.dir/src/planet.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/planet.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/planet.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/planet.cpp.o -c /home/alexd/Desktop/Projects/AzureVoxel/src/planet.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/AzureVoxel.dir/src/planet.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/AzureVoxel.dir/src/planet.cpp.o -MF CMakeFiles/AzureVoxel.dir/src/planet.cpp.o.d -o CMakeFiles/AzureVoxel.dir/src/planet.cpp.o -c /home/alexd/spg/AzureVoxel/src/planet.cpp
 
 CMakeFiles/AzureVoxel.dir/src/planet.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/AzureVoxel.dir/src/planet.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/Desktop/Projects/AzureVoxel/src/planet.cpp > CMakeFiles/AzureVoxel.dir/src/planet.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/alexd/spg/AzureVoxel/src/planet.cpp > CMakeFiles/AzureVoxel.dir/src/planet.cpp.i
 
 CMakeFiles/AzureVoxel.dir/src/planet.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/AzureVoxel.dir/src/planet.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/Desktop/Projects/AzureVoxel/src/planet.cpp -o CMakeFiles/AzureVoxel.dir/src/planet.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/alexd/spg/AzureVoxel/src/planet.cpp -o CMakeFiles/AzureVoxel.dir/src/planet.cpp.s
 
 # Object files for target AzureVoxel
 AzureVoxel_OBJECTS = \
 "CMakeFiles/AzureVoxel.dir/main.cpp.o" \
 "CMakeFiles/AzureVoxel.dir/src/window.cpp.o" \
 "CMakeFiles/AzureVoxel.dir/src/block.cpp.o" \
+"CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o" \
 "CMakeFiles/AzureVoxel.dir/src/texture.cpp.o" \
 "CMakeFiles/AzureVoxel.dir/src/camera.cpp.o" \
 "CMakeFiles/AzureVoxel.dir/src/shader.cpp.o" \
@@ -228,6 +243,7 @@ AzureVoxel_EXTERNAL_OBJECTS =
 AzureVoxel: CMakeFiles/AzureVoxel.dir/main.cpp.o
 AzureVoxel: CMakeFiles/AzureVoxel.dir/src/window.cpp.o
 AzureVoxel: CMakeFiles/AzureVoxel.dir/src/block.cpp.o
+AzureVoxel: CMakeFiles/AzureVoxel.dir/src/block_registry.cpp.o
 AzureVoxel: CMakeFiles/AzureVoxel.dir/src/texture.cpp.o
 AzureVoxel: CMakeFiles/AzureVoxel.dir/src/camera.cpp.o
 AzureVoxel: CMakeFiles/AzureVoxel.dir/src/shader.cpp.o
@@ -242,7 +258,7 @@ AzureVoxel: /usr/lib/x86_64-linux-gnu/libGLU.so
 AzureVoxel: /usr/lib/x86_64-linux-gnu/libGLEW.so
 AzureVoxel: /usr/lib/x86_64-linux-gnu/libglfw.so.3.3
 AzureVoxel: CMakeFiles/AzureVoxel.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Linking CXX executable AzureVoxel"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/alexd/spg/AzureVoxel/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Linking CXX executable AzureVoxel"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/AzureVoxel.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -254,6 +270,6 @@ CMakeFiles/AzureVoxel.dir/clean:
 .PHONY : CMakeFiles/AzureVoxel.dir/clean
 
 CMakeFiles/AzureVoxel.dir/depend:
-	cd /home/alexd/Desktop/Projects/AzureVoxel && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/alexd/Desktop/Projects/AzureVoxel /home/alexd/Desktop/Projects/AzureVoxel /home/alexd/Desktop/Projects/AzureVoxel /home/alexd/Desktop/Projects/AzureVoxel /home/alexd/Desktop/Projects/AzureVoxel/CMakeFiles/AzureVoxel.dir/DependInfo.cmake "--color=$(COLOR)"
+	cd /home/alexd/spg/AzureVoxel && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/alexd/spg/AzureVoxel /home/alexd/spg/AzureVoxel /home/alexd/spg/AzureVoxel /home/alexd/spg/AzureVoxel /home/alexd/spg/AzureVoxel/CMakeFiles/AzureVoxel.dir/DependInfo.cmake "--color=$(COLOR)"
 .PHONY : CMakeFiles/AzureVoxel.dir/depend
 

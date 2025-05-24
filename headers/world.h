@@ -29,6 +29,10 @@ public:
     // getBlockAtWorldPos will now iterate through planets
     std::shared_ptr<Block> getBlockAtWorldPos(const glm::vec3& worldPos) const;
 
+    // World information
+    const std::string& getWorldName() const { return worldName_; }
+    const std::string& getWorldDataPath() const { return worldDataPath_; }
+
     // Potentially remove or adapt: getChunkAt, worldToChunkCoords if they are specific to flat world structure
     // For planet-specific chunk access, one might go through Planet::getBlockAtWorldPos or a similar Planet method.
     // std::shared_ptr<Chunk> getChunkAt(int chunkX, int chunkZ); // Might be deprecated or changed
@@ -37,7 +41,6 @@ public:
     // Worker thread and task queue for chunk initialization (can be kept for planet chunks)
     void addMainThreadTask(const std::function<void()>& task);
     void processMainThreadTasks();
-    const std::string& getWorldDataPath() const { return worldDataPath_; }
 
     // Threading: Add tasks to queues
     void addTaskToWorker(const std::function<void()>& task);
