@@ -200,9 +200,22 @@ public:
     uint16_t getTextureIndex(const std::string& texture_name) const;
     bool loadTextureAtlas(const std::string& atlas_path);
     
-    // Branch-free face culling
+    // Optimized face culling - render face only if neighbor is air or transparent
     inline bool shouldRenderFace(uint16_t block_id, uint16_t neighbor_id) const {
-        return (render_data_[block_id].cull_mask & render_data_[neighbor_id].flags) != 0;
+        // Always render if current block is invalid
+        if (block_id >= MAX_BLOCK_TYPES) return false;
+        
+        // Don't render if current block is air
+        if (block_id == 0) return false;
+        
+        // Always render if neighbor is air (type 0)
+        if (neighbor_id == 0) return true;
+        
+        // Don't render if neighbor is invalid
+        if (neighbor_id >= MAX_BLOCK_TYPES) return false;
+        
+        // Render if neighbor is transparent and current is solid
+        return render_data_[neighbor_id].isTransparent() && render_data_[block_id].isSolid();
     }
     
     // Debug and development tools

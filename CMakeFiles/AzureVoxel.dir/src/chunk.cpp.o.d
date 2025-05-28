@@ -1,6 +1,7 @@
 CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
- /home/alexd/spg/AzureVoxel/src/chunk.cpp /usr/include/stdc-predef.h \
- /home/alexd/spg/AzureVoxel/src/../headers/chunk.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/chunk.cpp \
+ /usr/include/stdc-predef.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/chunk.h \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -300,7 +301,7 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
  /usr/include/glm/detail/type_half.inl /usr/include/glm/integer.hpp \
  /usr/include/glm/detail/func_integer.inl /usr/include/GL/glew.h \
  /usr/include/GL/glu.h /usr/include/GL/gl.h \
- /home/alexd/spg/AzureVoxel/src/../headers/block.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/block.h \
  /usr/include/GLFW/glfw3.h /usr/include/glm/gtc/matrix_transform.hpp \
  /usr/include/glm/ext/matrix_projection.hpp \
  /usr/include/glm/gtc/constants.hpp \
@@ -313,8 +314,8 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
  /usr/include/glm/ext/matrix_transform.hpp \
  /usr/include/glm/ext/matrix_transform.inl \
  /usr/include/glm/gtc/matrix_transform.inl \
- /home/alexd/spg/AzureVoxel/src/../headers/texture.h \
- /home/alexd/spg/AzureVoxel/src/../headers/shader.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/texture.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/shader.h \
  /usr/include/c++/13/fstream /usr/include/c++/13/istream \
  /usr/include/c++/13/ios /usr/include/c++/13/bits/ios_base.h \
  /usr/include/c++/13/bits/locale_classes.h \
@@ -339,13 +340,14 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
  /usr/include/c++/13/bits/sstream.tcc /usr/include/c++/13/iostream \
  /usr/include/c++/13/optional \
  /usr/include/c++/13/bits/enable_special_members.h \
- /home/alexd/spg/AzureVoxel/src/../headers/world.h \
- /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
- /usr/include/c++/13/bits/this_thread_sleep.h \
+ /usr/include/c++/13/atomic /usr/include/c++/13/mutex \
  /usr/include/c++/13/bits/chrono.h /usr/include/c++/13/ratio \
  /usr/include/c++/13/ctime /usr/include/c++/13/bits/parse_numbers.h \
- /usr/include/c++/13/mutex /usr/include/c++/13/bits/std_mutex.h \
- /usr/include/c++/13/bits/unique_lock.h /usr/include/c++/13/queue \
+ /usr/include/c++/13/bits/std_mutex.h \
+ /usr/include/c++/13/bits/unique_lock.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/world.h \
+ /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
+ /usr/include/c++/13/bits/this_thread_sleep.h /usr/include/c++/13/queue \
  /usr/include/c++/13/deque /usr/include/c++/13/bits/stl_deque.h \
  /usr/include/c++/13/bits/deque.tcc /usr/include/c++/13/bits/stl_heap.h \
  /usr/include/c++/13/bits/stl_queue.h /usr/include/c++/13/functional \
@@ -359,10 +361,11 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
  /usr/include/c++/13/compare /usr/include/c++/13/bits/stl_algo.h \
  /usr/include/c++/13/bits/algorithmfwd.h \
  /usr/include/c++/13/bits/uniform_int_dist.h \
- /usr/include/c++/13/condition_variable /usr/include/c++/13/atomic \
- /home/alexd/spg/AzureVoxel/src/../headers/camera.h \
- /home/alexd/spg/AzureVoxel/src/../headers/planet.h \
- /home/alexd/spg/AzureVoxel/src/../headers/block_registry.h \
+ /usr/include/c++/13/condition_variable \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/camera.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/planet.h \
+ /usr/include/c++/13/chrono \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/block_registry.h \
  /usr/include/c++/13/filesystem /usr/include/c++/13/bits/fs_fwd.h \
  /usr/include/c++/13/bits/fs_path.h /usr/include/c++/13/locale \
  /usr/include/c++/13/bits/locale_facets_nonio.h \
@@ -421,5 +424,5 @@ CMakeFiles/AzureVoxel.dir/src/chunk.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/statx-generic.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_statx_timestamp.h \
  /usr/include/x86_64-linux-gnu/bits/types/struct_statx.h \
- /usr/include/c++/13/chrono /usr/include/glm/gtc/noise.hpp \
- /usr/include/glm/detail/_noise.hpp /usr/include/glm/gtc/noise.inl
+ /usr/include/glm/gtc/noise.hpp /usr/include/glm/detail/_noise.hpp \
+ /usr/include/glm/gtc/noise.inl

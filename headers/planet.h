@@ -44,8 +44,6 @@ public:
     const std::string& getName() const { return name_; }
 
 private:
-    void generatePlanetStructure(); // Internal method to create and initialize chunks
-
     glm::vec3 position_; // Center of the planet in world space
     float radius_;
     int seed_;
@@ -56,7 +54,8 @@ private:
     std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>, IVec3Hash> chunks_;
 
     int chunksInRadius_; // Number of chunks from center to surface along an axis (approximate)
-    int chunkRenderDistance_ = 25; // Max render distance in chunk units (radius)
+    int chunkRenderDistance_ = 14; // Max render distance in chunk units (radius) - increased for testing
+    int maxChunksPerFrame_ = 1; // Maximum chunks to generate per frame to prevent lag
     std::vector<glm::ivec3> activeChunkKeys_; // Chunks within render distance of camera
     
     // Path for saving/loading planet-specific chunk data, if applicable in the future.

@@ -1,6 +1,7 @@
 CMakeFiles/AzureVoxel.dir/src/window.cpp.o: \
- /home/alexd/spg/AzureVoxel/src/window.cpp /usr/include/stdc-predef.h \
- /home/alexd/spg/AzureVoxel/src/../headers/window.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/window.cpp \
+ /usr/include/stdc-predef.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/window.h \
  /usr/include/GL/glew.h /usr/include/c++/13/cstddef \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

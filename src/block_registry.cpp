@@ -42,7 +42,7 @@ bool BlockRegistry::initialize(const std::string& blocks_directory) {
         std::cout << "Loading block definitions from: " << blocks_directory << std::endl;
         
         for (const auto& entry : std::filesystem::directory_iterator(blocks_directory)) {
-            if (entry.path().extension() == ".json" || entry.path().extension() == ".txt") {
+            if (entry.path().extension() == ".json") {
                 loadBlockDefinitionFile(entry.path().string());
             }
         }
@@ -57,11 +57,29 @@ bool BlockRegistry::initialize(const std::string& blocks_directory) {
     BiomeContext hot_biome("hot", 0.8f, -0.3f);
     BiomeContext water_biome("water", 0.0f, 1.0f);
     
+    // Add more diverse biomes for better terrain generation
+    BiomeContext arctic_biome("arctic", -0.9f, 0.1f);
+    BiomeContext desert_biome("desert", 0.9f, -0.8f);
+    BiomeContext tropical_biome("tropical", 0.7f, 0.8f);
+    BiomeContext mountain_biome("mountain", -0.3f, 0.2f);
+    BiomeContext forest_biome("forest", 0.3f, 0.7f);
+    BiomeContext swamp_biome("swamp", 0.4f, 0.9f);
+    BiomeContext volcanic_biome("volcanic", 1.0f, -0.5f);
+    BiomeContext tundra_biome("tundra", -0.6f, 0.4f);
+    
     registerBiome(BiomeContext{}); // Default biome (index 0)
     registerBiome(temperate_biome);
     registerBiome(cold_biome);
     registerBiome(hot_biome);
     registerBiome(water_biome);
+    registerBiome(arctic_biome);
+    registerBiome(desert_biome);
+    registerBiome(tropical_biome);
+    registerBiome(mountain_biome);
+    registerBiome(forest_biome);
+    registerBiome(swamp_biome);
+    registerBiome(volcanic_biome);
+    registerBiome(tundra_biome);
     
     PlanetContext earth_planet("earth");
     PlanetContext mars_planet("mars");
@@ -179,6 +197,76 @@ void BlockRegistry::createDefaultBlocks() {
     gold_ore.blast_resistance = 35.0f;
     gold_ore.default_texture = "gold_ore";
     registerBlock(gold_ore);
+    
+    // Add more block types for diverse biomes
+    
+    // Clay (11) - for swamp areas
+    BlockDefinition clay("azurevoxel:clay", 11, "Clay");
+    clay.hardness = 1.2f;
+    clay.default_texture = "clay";
+    registerBlock(clay);
+    
+    // Mud (12) - for swamp areas
+    BlockDefinition mud("azurevoxel:mud", 12, "Mud");
+    mud.hardness = 0.8f;
+    mud.default_texture = "mud";
+    registerBlock(mud);
+    
+    // Obsidian (13) - for volcanic areas
+    BlockDefinition obsidian("azurevoxel:obsidian", 13, "Obsidian");
+    obsidian.hardness = 5.0f;
+    obsidian.blast_resistance = 50.0f;
+    obsidian.default_texture = "obsidian";
+    registerBlock(obsidian);
+    
+    // Lava (14) - for volcanic areas
+    BlockDefinition lava("azurevoxel:lava", 14, "Lava");
+    lava.solid = false;
+    lava.transparent = true;
+    lava.light_emission = 12;
+    lava.hardness = 0.0f;
+    lava.default_texture = "lava";
+    registerBlock(lava);
+    
+    // Ice (15) - for arctic/cold areas
+    BlockDefinition ice("azurevoxel:ice", 15, "Ice");
+    ice.hardness = 1.5f;
+    ice.transparent = true;
+    ice.default_texture = "ice";
+    registerBlock(ice);
+    
+    // Sandstone (16) - for desert areas
+    BlockDefinition sandstone("azurevoxel:sandstone", 16, "Sandstone");
+    sandstone.hardness = 2.5f;
+    sandstone.blast_resistance = 20.0f;
+    sandstone.default_texture = "sandstone";
+    registerBlock(sandstone);
+    
+    // Cactus (17) - for desert areas
+    BlockDefinition cactus("azurevoxel:cactus", 17, "Cactus");
+    cactus.hardness = 1.0f;
+    cactus.default_texture = "cactus";
+    registerBlock(cactus);
+    
+    // Moss Stone (18) - for forest/tropical areas
+    BlockDefinition moss_stone("azurevoxel:moss_stone", 18, "Moss Stone");
+    moss_stone.hardness = 2.2f;
+    moss_stone.default_texture = "moss_stone";
+    registerBlock(moss_stone);
+    
+    // Granite (19) - for mountain areas
+    BlockDefinition granite("azurevoxel:granite", 19, "Granite");
+    granite.hardness = 3.5f;
+    granite.blast_resistance = 30.0f;
+    granite.default_texture = "granite";
+    registerBlock(granite);
+    
+    // Basalt (20) - for volcanic/mountain areas
+    BlockDefinition basalt("azurevoxel:basalt", 20, "Basalt");
+    basalt.hardness = 3.0f;
+    basalt.blast_resistance = 25.0f;
+    basalt.default_texture = "basalt";
+    registerBlock(basalt);
 }
 
 /**
@@ -242,7 +330,7 @@ bool BlockRegistry::registerBlock(const BlockDefinition& definition) {
  * Register a biome context
  */
 uint8_t BlockRegistry::registerBiome(const BiomeContext& biome) {
-    if (next_biome_id_ >= 256) {
+    if (next_biome_id_ == 255) {
         std::cerr << "Error: Maximum number of biomes reached" << std::endl;
         return 0;
     }
@@ -266,7 +354,7 @@ uint8_t BlockRegistry::registerBiome(const BiomeContext& biome) {
  * Register a planet context
  */
 uint8_t BlockRegistry::registerPlanet(const PlanetContext& planet) {
-    if (next_planet_id_ >= 256) {
+    if (next_planet_id_ == 255) {
         std::cerr << "Error: Maximum number of planets reached" << std::endl;
         return 0;
     }
@@ -477,7 +565,6 @@ bool BlockRegistry::loadBlockDefinitionFromJSON(std::ifstream& file) {
     
     try {
         // Simple JSON parser for block definitions
-        size_t pos = 0;
         
         // Find "blocks" array
         size_t blocks_start = content.find("\"blocks\"");

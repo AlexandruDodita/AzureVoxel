@@ -1,7 +1,8 @@
 CMakeFiles/AzureVoxel.dir/src/block.cpp.o: \
- /home/alexd/spg/AzureVoxel/src/block.cpp /usr/include/stdc-predef.h \
- /home/alexd/spg/AzureVoxel/src/../headers/block.h /usr/include/GL/glew.h \
- /usr/include/c++/13/cstddef \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/block.cpp \
+ /usr/include/stdc-predef.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/block.h \
+ /usr/include/GL/glew.h /usr/include/c++/13/cstddef \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
  /usr/include/features.h /usr/include/features-time64.h \
@@ -252,7 +253,7 @@ CMakeFiles/AzureVoxel.dir/src/block.cpp.o: \
  /usr/include/glm/ext/matrix_transform.hpp \
  /usr/include/glm/ext/matrix_transform.inl \
  /usr/include/glm/gtc/matrix_transform.inl \
- /home/alexd/spg/AzureVoxel/src/../headers/texture.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/texture.h \
  /usr/include/c++/13/string /usr/include/c++/13/bits/stringfwd.h \
  /usr/include/c++/13/bits/char_traits.h \
  /usr/include/c++/13/bits/postypes.h /usr/include/c++/13/cwchar \
@@ -317,7 +318,7 @@ CMakeFiles/AzureVoxel.dir/src/block.cpp.o: \
  /usr/include/c++/13/backward/auto_ptr.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/alexd/spg/AzureVoxel/src/../headers/block_registry.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/src/../headers/block_registry.h \
  /usr/include/c++/13/unordered_map \
  /usr/include/c++/13/bits/unordered_map.h \
  /usr/include/c++/13/bits/hashtable.h \

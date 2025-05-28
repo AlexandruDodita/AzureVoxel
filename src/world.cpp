@@ -9,23 +9,110 @@
 
 const std::string CHUNK_DATA_DIR = "chunk_data";
 
+// ChunkThreadPool implementation
+ChunkThreadPool::ChunkThreadPool(size_t numThreads) : stop_(false) {
+    for (size_t i = 0; i < numThreads; ++i) {
+        workers_.emplace_back(&ChunkThreadPool::workerFunction, this);
+    }
+    std::cout << "ChunkThreadPool initialized with " << numThreads << " threads." << std::endl;
+}
+
+ChunkThreadPool::~ChunkThreadPool() {
+    shutdown();
+}
+
+void ChunkThreadPool::enqueueTask(std::function<void()> task) {
+    {
+        std::unique_lock<std::mutex> lock(queueMutex_);
+        if (stop_) return; // Don't accept new tasks if shutting down
+        tasks_.push(std::move(task));
+    }
+    condition_.notify_one();
+}
+
+void ChunkThreadPool::shutdown() {
+    {
+        std::unique_lock<std::mutex> lock(queueMutex_);
+        stop_ = true;
+    }
+    condition_.notify_all();
+    
+    for (std::thread& worker : workers_) {
+        if (worker.joinable()) {
+            worker.join();
+        }
+    }
+    workers_.clear();
+}
+
+void ChunkThreadPool::workerFunction() {
+    while (true) {
+        std::function<void()> task;
+        {
+            std::unique_lock<std::mutex> lock(queueMutex_);
+            condition_.wait(lock, [this] { return stop_ || !tasks_.empty(); });
+            
+            if (stop_ && tasks_.empty()) {
+                break;
+            }
+            
+            if (tasks_.empty()) {
+                continue; // Spurious wakeup
+            }
+            
+            task = std::move(tasks_.front());
+            tasks_.pop();
+        }
+        
+        try {
+            if (task) {
+                task();
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "ChunkThreadPool worker caught exception: " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "ChunkThreadPool worker caught unknown exception." << std::endl;
+        }
+    }
+}
+
+// World implementation
 World::World(const std::string& worldName, int defaultSeed)
-    : worldName_(worldName), defaultSeed_(defaultSeed), shouldTerminate_(false) {
+    : worldName_(worldName), defaultSeed_(defaultSeed), 
+      chunksGeneratedThisSecond_(0), meshesBuiltThisSecond_(0),
+      lastPerformanceReport_(std::chrono::steady_clock::now()) {
+    
     worldDataPath_ = "chunk_data/" + worldName_;
     createWorldDirectories();
     
-    workerThread_ = std::thread(&World::workerThreadFunction, this);
-    std::cout << "World '" << worldName_ << "' initialized. Data path: " << worldDataPath_ << std::endl;
+    // Determine optimal thread counts based on hardware
+    unsigned int hardwareThreads = std::thread::hardware_concurrency();
+    if (hardwareThreads == 0) hardwareThreads = 4; // Fallback
+    
+    // Use more threads for chunk generation (CPU intensive)
+    size_t chunkGenThreads = std::max(2u, hardwareThreads / 2);
+    // Use fewer threads for mesh building (less CPU intensive, more frequent)
+    size_t meshBuildThreads = std::max(1u, hardwareThreads / 4);
+    
+    chunkGenerationPool_ = std::make_unique<ChunkThreadPool>(chunkGenThreads);
+    meshBuildingPool_ = std::make_unique<ChunkThreadPool>(meshBuildThreads);
+    
+    std::cout << "World '" << worldName_ << "' initialized with " 
+              << chunkGenThreads << " chunk generation threads and " 
+              << meshBuildThreads << " mesh building threads. Data path: " << worldDataPath_ << std::endl;
 }
 
 World::~World() {
     std::cout << "Destroying world '" << worldName_ << "'..." << std::endl;
-    shouldTerminate_.store(true);
-    queueCondition_.notify_one(); // Wake up worker thread if it's waiting
-    if (workerThread_.joinable()) {
-        workerThread_.join();
+    
+    // Shutdown thread pools
+    if (chunkGenerationPool_) {
+        chunkGenerationPool_->shutdown();
     }
-    // saveAllPlanets(); // Placeholder for saving planet data if needed
+    if (meshBuildingPool_) {
+        meshBuildingPool_->shutdown();
+    }
+    
     planets_.clear();
     std::cout << "World '" << worldName_ << "' destroyed." << std::endl;
 }
@@ -44,48 +131,21 @@ void World::addPlanet(const glm::vec3& position, float radius, int seed, const s
     auto planet = std::make_shared<Planet>(position, radius, seed, name);
     planets_.push_back(planet);
     std::cout << "Added planet '" << name << "' to world." << std::endl;
-    // Future: could queue initial chunks of this planet for generation by worker thread.
 }
 
-void World::workerThreadFunction() {
-    std::cout << "Worker thread started." << std::endl;
-    while (true) {
-        std::function<void()> task;
-        {
-            std::unique_lock<std::mutex> lock(queueMutex_);
-            queueCondition_.wait(lock, [this] { return shouldTerminate_.load() || !taskQueue_.empty(); });
-            if (shouldTerminate_.load() && taskQueue_.empty()) {
-                break; 
-            }
-            if (taskQueue_.empty()) { // Spurious wakeup or terminate with empty queue
-                continue;
-            }
-            task = std::move(taskQueue_.front());
-            taskQueue_.pop();
-        }
-        try {
-            if (task) {
-                task(); // Execute the task (e.g., chunk data generation)
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "Worker thread caught exception: " << e.what() << std::endl;
-        } catch (...) {
-            std::cerr << "Worker thread caught unknown exception." << std::endl;
-        }
+void World::addChunkGenerationTask(const std::function<void()>& task) {
+    if (chunkGenerationPool_) {
+        chunkGenerationPool_->enqueueTask(task);
+        chunksGeneratedThisSecond_++;
     }
-    std::cout << "Worker thread stopping." << std::endl;
 }
 
-void World::addTaskToWorker(const std::function<void()>& task) {
-    {
-        std::unique_lock<std::mutex> lock(queueMutex_);
-        taskQueue_.push(task);
+void World::addMeshBuildingTask(const std::function<void()>& task) {
+    if (meshBuildingPool_) {
+        meshBuildingPool_->enqueueTask(task);
+        meshesBuiltThisSecond_++;
     }
-    queueCondition_.notify_one();
 }
-
-std::queue<std::function<void()>> mainThreadTasks_;
-std::mutex mainThreadTasksMutex_;
 
 void World::addMainThreadTask(const std::function<void()>& task) {
     std::unique_lock<std::mutex> lock(mainThreadTasksMutex_);
@@ -100,18 +160,41 @@ void World::processMainThreadTasks() {
             tasksToProcess.swap(mainThreadTasks_);
         }
     }
+    
+    int tasksProcessed = 0;
     while (!tasksToProcess.empty()) {
         auto task = tasksToProcess.front();
         tasksToProcess.pop();
         if (task) {
             try {
                 task();
+                tasksProcessed++;
             } catch (const std::exception& e) {
                 std::cerr << "Main thread task caught exception: " << e.what() << std::endl;
             } catch (...) {
                 std::cerr << "Main thread task caught unknown exception." << std::endl;
             }
         }
+    }
+    
+    // Report performance metrics periodically
+    reportPerformanceMetrics();
+}
+
+void World::reportPerformanceMetrics() {
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - lastPerformanceReport_);
+    
+    if (elapsed.count() >= 5) { // Report every 5 seconds
+        int chunksGenerated = chunksGeneratedThisSecond_.exchange(0);
+        int meshesBuilt = meshesBuiltThisSecond_.exchange(0);
+        
+        if (chunksGenerated > 0 || meshesBuilt > 0) {
+            std::cout << "Performance: " << chunksGenerated << " chunks generated, " 
+                      << meshesBuilt << " meshes built in last " << elapsed.count() << " seconds" << std::endl;
+        }
+        
+        lastPerformanceReport_ = now;
     }
 }
 

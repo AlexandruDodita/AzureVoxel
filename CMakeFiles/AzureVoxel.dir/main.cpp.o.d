@@ -1,4 +1,5 @@
-CMakeFiles/AzureVoxel.dir/main.cpp.o: /home/alexd/spg/AzureVoxel/main.cpp \
+CMakeFiles/AzureVoxel.dir/main.cpp.o: \
+ /home/alexd/Desktop/Projects/AzureVoxel/main.cpp \
  /usr/include/stdc-predef.h /usr/include/c++/13/iostream \
  /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
@@ -355,15 +356,16 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: /home/alexd/spg/AzureVoxel/main.cpp \
  /usr/include/c++/13/bits/locale_conv.h \
  /usr/include/c++/13/bits/quoted_string.h /usr/include/c++/13/sstream \
  /usr/include/c++/13/bits/sstream.tcc \
- /home/alexd/spg/AzureVoxel/headers/window.h \
- /home/alexd/spg/AzureVoxel/headers/shader.h /usr/include/c++/13/fstream \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/window.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/shader.h \
+ /usr/include/c++/13/fstream \
  /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++io.h \
  /usr/include/c++/13/bits/fstream.tcc \
- /home/alexd/spg/AzureVoxel/headers/texture.h \
- /home/alexd/spg/AzureVoxel/headers/camera.h \
- /home/alexd/spg/AzureVoxel/headers/block.h /usr/include/c++/13/vector \
- /usr/include/c++/13/bits/stl_uninitialized.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/texture.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/camera.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/block.h \
+ /usr/include/c++/13/vector /usr/include/c++/13/bits/stl_uninitialized.h \
  /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \
  /usr/include/c++/13/bits/vector.tcc /usr/include/c++/13/memory \
@@ -381,7 +383,7 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: /home/alexd/spg/AzureVoxel/main.cpp \
  /usr/include/c++/13/backward/auto_ptr.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/alexd/spg/AzureVoxel/headers/block_registry.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/block_registry.h \
  /usr/include/c++/13/unordered_map \
  /usr/include/c++/13/bits/unordered_map.h \
  /usr/include/c++/13/bits/hashtable.h \
@@ -394,8 +396,8 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: /home/alexd/spg/AzureVoxel/main.cpp \
  /usr/include/c++/13/bits/parse_numbers.h \
  /usr/include/c++/13/bits/fs_path.h /usr/include/c++/13/codecvt \
  /usr/include/c++/13/bits/fs_dir.h /usr/include/c++/13/bits/fs_ops.h \
- /home/alexd/spg/AzureVoxel/headers/world.h /usr/include/c++/13/thread \
- /usr/include/c++/13/bits/std_thread.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/world.h \
+ /usr/include/c++/13/thread /usr/include/c++/13/bits/std_thread.h \
  /usr/include/c++/13/bits/this_thread_sleep.h /usr/include/c++/13/mutex \
  /usr/include/c++/13/bits/std_mutex.h \
  /usr/include/c++/13/bits/unique_lock.h /usr/include/c++/13/queue \
@@ -407,7 +409,8 @@ CMakeFiles/AzureVoxel.dir/main.cpp.o: /home/alexd/spg/AzureVoxel/main.cpp \
  /usr/include/c++/13/bits/algorithmfwd.h \
  /usr/include/c++/13/bits/uniform_int_dist.h \
  /usr/include/c++/13/condition_variable /usr/include/c++/13/atomic \
- /home/alexd/spg/AzureVoxel/headers/chunk.h \
- /home/alexd/spg/AzureVoxel/headers/planet.h \
- /home/alexd/spg/AzureVoxel/headers/planet.h \
- /home/alexd/spg/AzureVoxel/headers/crosshair.h
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/chunk.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/planet.h \
+ /usr/include/c++/13/chrono \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/planet.h \
+ /home/alexd/Desktop/Projects/AzureVoxel/headers/crosshair.h

@@ -8,6 +8,8 @@
 #include "block.h"
 #include "shader.h"
 #include <optional> // For optional planet context
+#include <atomic>
+#include <mutex>
 
 // Constants for chunk dimensions
 constexpr int CHUNK_SIZE_X = 16;
@@ -30,10 +32,26 @@ struct BlockInfo {
     // Add other non-OpenGL properties if needed (e.g. light level from world gen)
 };
 
+// Chunk processing states for multi-threading
+enum class ChunkState {
+    UNINITIALIZED,      // Just created, no data
+    DATA_GENERATING,    // Terrain generation in progress (worker thread)
+    DATA_READY,         // Terrain data ready, needs mesh building
+    MESH_BUILDING,      // Mesh building in progress (worker thread)
+    MESH_READY,         // Mesh data ready, needs OpenGL initialization
+    OPENGL_INITIALIZING,// OpenGL objects being created (main thread)
+    FULLY_INITIALIZED   // Ready for rendering
+};
+
 class Chunk : public std::enable_shared_from_this<Chunk> {
 private:
     // Chunk position in world space (position of the first block)
     glm::vec3 position;
+    
+    // Thread-safe state management
+    std::atomic<ChunkState> state_;
+    mutable std::mutex dataMutex_;  // Protects block data access
+    mutable std::mutex meshMutex_;  // Protects mesh data access
     
     // Store BlockInfo during the data-only phase (populated by worker thread)
     std::vector<std::vector<std::vector<BlockInfo>>> blockDataForInitialization_;
@@ -42,14 +60,12 @@ private:
     std::vector<std::vector<std::vector<std::shared_ptr<Block>>>> blocks_;
     
     // Flag to indicate if chunk mesh needs to be rebuilt
-    bool needsRebuild;
-    
-    bool isInitialized_ = false;
+    std::atomic<bool> needsRebuild_;
     
     // Mesh data for rendering visible faces
     ChunkMesh surfaceMesh;
     
-    // Vertex and index data for mesh building
+    // Vertex and index data for mesh building (protected by meshMutex_)
     std::vector<float> meshVertices;
     std::vector<unsigned int> meshIndices;
     
@@ -57,10 +73,10 @@ private:
     std::optional<glm::vec3> planetCenter_;
     std::optional<float> planetRadius_;
     
-    // Check if a block exists at local chunk coordinates
+    // Check if a block exists at local chunk coordinates (thread-safe)
     bool hasBlockAtLocal(int x, int y, int z) const;
     
-    // Build the surface mesh for the chunk
+    // Build the surface mesh for the chunk (can be called from worker thread)
     void buildSurfaceMesh(const World* world, const std::optional<glm::vec3>& planetCenter, const std::optional<float>& planetRadius);
     
     // Helper to add a face to the mesh data vectors
@@ -72,8 +88,7 @@ private:
     std::string getChunkFileName() const;
 
     // Data-only preparation methods (called by worker thread)
-    void prepareBlockData(World* world, int seed, const std::string& worldDataPath);
-    void generateTerrain_DataOnly(int seed);
+    void generateTerrainDataOnly(int seed, const std::optional<glm::vec3>& planetCenter, const std::optional<float>& planetRadius);
     bool loadFromFile_DataOnly(const std::string& directoryPath, World* world);
 
 public:
@@ -83,17 +98,20 @@ public:
     // Destructor
     ~Chunk();
     
-    // Initialize the chunk (generates blocks and builds initial mesh)
-    void init(const World* world);
+    // Multi-threaded initialization phases
+    void generateDataAsync(const World* world, int seed, const std::optional<glm::vec3>& planetCenter = std::nullopt, const std::optional<float>& planetRadius = std::nullopt);
+    void buildMeshAsync(const World* world);
+    void initializeOpenGL(World* world);
     
-    // Generate terrain for the chunk (fills the entire chunk with blocks)
+    // Legacy methods for compatibility
+    void init(const World* world);
     void generateTerrain(int seed, const std::optional<glm::vec3>& planetCenter, const std::optional<float>& planetRadius);
-
-    // Ensure the chunk is initialized (loaded or generated and meshed)
     void ensureInitialized(const World* world, int seed, const std::optional<glm::vec3>& planetCenter = std::nullopt, const std::optional<float>& planetRadius = std::nullopt);
 
-    // Check if the chunk has been initialized
-    bool isInitialized() const;
+    // State management
+    ChunkState getState() const { return state_.load(); }
+    bool isReadyForRendering() const { return state_.load() == ChunkState::FULLY_INITIALIZED; }
+    bool isInitialized() const { return state_.load() == ChunkState::FULLY_INITIALIZED; }
     
     // Render the chunk's surface mesh
     void renderSurface(const glm::mat4& projection, const glm::mat4& view, bool wireframeState) const;
@@ -101,29 +119,27 @@ public:
     // Render all blocks individually (for the current player chunk)
     void renderAllBlocks(const glm::mat4& projection, const glm::mat4& view);
     
-    // Get block at local chunk coordinates
+    // Get block at local chunk coordinates (thread-safe)
     std::shared_ptr<Block> getBlockAtLocal(int x, int y, int z) const;
     
-    // Set block at local chunk coordinates (marks for rebuild)
+    // Set block at local chunk coordinates (marks for rebuild, thread-safe)
     void setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block);
     
-    // Remove block at local chunk coordinates (marks for rebuild)
+    // Remove block at local chunk coordinates (marks for rebuild, thread-safe)
     void removeBlockAtLocal(int x, int y, int z);
     
     // Get chunk position
     glm::vec3 getPosition() const;
     
     // Check if the mesh needs rebuilding
-    bool needsMeshRebuild() const { return needsRebuild; }
-    void markMeshRebuilt() { needsRebuild = false; }
+    bool needsMeshRebuild() const { return needsRebuild_.load(); }
+    void markMeshRebuilt() { needsRebuild_.store(false); }
     
     // Cleanup OpenGL resources
     void cleanupMesh();
 
     // Save and load chunk data
     bool saveToFile(const std::string& directoryPath) const;
-    // loadFromFile is effectively replaced by _DataOnly and openglInitialize phases
-    // bool loadFromFile(const std::string& directoryPath, const World* world);
 
     // Method to set planet context
     void setPlanetContext(const glm::vec3& planetCenter, float planetRadius);

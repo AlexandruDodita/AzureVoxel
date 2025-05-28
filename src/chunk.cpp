@@ -18,6 +18,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <filesystem> // For chunk data saving
 #include <GL/glew.h>
+#include <mutex> // For std::mutex
 
 // --- Vertex data for a single block face ---
 // Order: Position (3 floats), Texture Coords (2 floats)
@@ -45,7 +46,7 @@ const glm::vec2 texCoords[] = {
 };
 
 Chunk::Chunk(const glm::vec3& position)
-    : position(position), needsRebuild(true), isInitialized_(false) {
+    : position(position), state_(ChunkState::UNINITIALIZED), needsRebuild_(true) {
     blocks_.resize(CHUNK_SIZE_X, std::vector<std::vector<std::shared_ptr<Block>>>(
                                    CHUNK_SIZE_Y, std::vector<std::shared_ptr<Block>>(
                                                  CHUNK_SIZE_Z, nullptr)));
@@ -153,6 +154,11 @@ bool Chunk::hasBlockAtLocal(int x, int y, int z) const {
     if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z) {
         return false;
     }
+    
+    std::lock_guard<std::mutex> lock(dataMutex_);
+    if (state_.load() >= ChunkState::DATA_READY) {
+        return blockDataForInitialization_[x][y][z].type != 0;
+    }
     return blocks_[x][y][z] != nullptr;
 }
 
@@ -160,6 +166,8 @@ std::shared_ptr<Block> Chunk::getBlockAtLocal(int x, int y, int z) const {
     if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z) {
         return nullptr;
     }
+    
+    std::lock_guard<std::mutex> lock(dataMutex_);
     return blocks_[x][y][z];
 }
 
@@ -167,8 +175,10 @@ void Chunk::setBlockAtLocal(int x, int y, int z, std::shared_ptr<Block> block) {
     if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z) {
         return;
     }
+    
+    std::lock_guard<std::mutex> lock(dataMutex_);
     if ((blocks_[x][y][z] == nullptr && block != nullptr) || (blocks_[x][y][z] != nullptr && block == nullptr)) {
-        needsRebuild = true;
+        needsRebuild_.store(true);
     }
     blocks_[x][y][z] = block;
     if (block != nullptr) {
@@ -182,10 +192,12 @@ void Chunk::removeBlockAtLocal(int x, int y, int z) {
      if (x < 0 || x >= CHUNK_SIZE_X || y < 0 || y >= CHUNK_SIZE_Y || z < 0 || z >= CHUNK_SIZE_Z) {
         return;
     }
+    
+    std::lock_guard<std::mutex> lock(dataMutex_);
     if (blocks_[x][y][z] != nullptr) {
         blocks_[x][y][z] = nullptr;
         blockDataForInitialization_[x][y][z].type = 0; // Air
-        needsRebuild = true;
+        needsRebuild_.store(true);
     }
 }
 
@@ -276,50 +288,70 @@ bool Chunk::loadFromFile_DataOnly(const std::string& directoryPath, World* /*wor
             }
         }
     }
-    needsRebuild = true;
+    needsRebuild_.store(true);
     return true; 
 }
 
 void Chunk::ensureInitialized(const World* world, int seed, const std::optional<glm::vec3>& planetCenter, const std::optional<float>& planetRadius) {
-    if (isInitialized_) {
+    if (isInitialized()) { // MODIFIED: From isInitialized_
         return;
     }
 
     std::optional<glm::vec3> pCenter = planetCenter.has_value() ? planetCenter : planetCenter_;
     std::optional<float> pRadius = planetRadius.has_value() ? planetRadius : planetRadius_;
 
-    // Try to load chunk data from file first
+    if (blockDataForInitialization_.empty() || blockDataForInitialization_.size() != CHUNK_SIZE_X) { 
+        blockDataForInitialization_.resize(CHUNK_SIZE_X,
+                                 std::vector<std::vector<BlockInfo>>(
+                                     CHUNK_SIZE_Y,
+                                     std::vector<BlockInfo>(CHUNK_SIZE_Z)));
+    }
+    if (blocks_.empty() || blocks_.size() != CHUNK_SIZE_X) { 
+        blocks_.resize(CHUNK_SIZE_X, std::vector<std::vector<std::shared_ptr<Block>>>(
+                               CHUNK_SIZE_Y, std::vector<std::shared_ptr<Block>>(
+                                             CHUNK_SIZE_Z, nullptr)));
+    }
+
     bool loadedFromFile = false;
     if (world) {
         std::string worldDataPath = "chunk_data/" + world->getWorldName();
         loadedFromFile = loadFromFile_DataOnly(worldDataPath, const_cast<World*>(world));
         if (loadedFromFile) {
-            std::cout << "Loaded chunk " << position.x << "," << position.y << "," << position.z << " from file." << std::endl;
+            std::cout << "✓ LEGACY_LOAD: Chunk " << position.x << "," << position.y << "," << position.z << " from file (ensureInitialized)" << std::endl;
+            for (int x_local = 0; x_local < CHUNK_SIZE_X; ++x_local) {
+                for (int y_local = 0; y_local < CHUNK_SIZE_Y; ++y_local) {
+                    for (int z_local = 0; z_local < CHUNK_SIZE_Z; ++z_local) {
+                        uint16_t blockTypeId = static_cast<uint16_t>(blockDataForInitialization_[x_local][y_local][z_local].type);
+                        glm::vec3 blockWorldPos = position + glm::vec3(x_local, y_local, z_local);
+                        if (blockTypeId != 0) {
+                            blocks_[x_local][y_local][z_local] = std::make_shared<Block>(blockWorldPos, blockTypeId, glm::vec3(0.5f), 1.0f);
+                        } else {
+                            blocks_[x_local][y_local][z_local] = nullptr;
+                        }
+                    }
+                }
+            }
+        } else {
+            std::cout << "✗ LEGACY_LOAD_FAIL: Chunk " << position.x << "," << position.y << "," << position.z << " not found (ensureInitialized)" << std::endl;
         }
     }
 
-    // If loading failed, generate terrain
     if (!loadedFromFile) {
-        generateTerrain(seed, pCenter, pRadius);
-        
-        // Save the generated chunk data to file
+        std::cout << "⚡ LEGACY_GEN: Chunk " << position.x << "," << position.y << "," << position.z << " (ensureInitialized)" << std::endl;
+        generateTerrain(seed, pCenter, pRadius); // Calls old generateTerrain
         if (world) {
             std::string worldDataPath = "chunk_data/" + world->getWorldName();
             if (saveToFile(worldDataPath)) {
-                std::cout << "Saved generated chunk " << position.x << "," << position.y << "," << position.z << " to file." << std::endl;
+                std::cout << "💾 LEGACY_SAVE: Chunk " << position.x << "," << position.y << "," << position.z << " (ensureInitialized)" << std::endl;
             } else {
-                std::cerr << "Failed to save chunk " << position.x << "," << position.y << "," << position.z << " to file." << std::endl;
+                std::cerr << "❌ LEGACY_SAVE_FAIL: Chunk " << position.x << "," << position.y << "," << position.z << " (ensureInitialized)" << std::endl;
             }
         }
     }
 
     buildSurfaceMesh(world, pCenter, pRadius);
-    isInitialized_ = true;
-    needsRebuild = false;
-}
-
-bool Chunk::isInitialized() const {
-    return isInitialized_;
+    openglInitialize(const_cast<World*>(world)); // Call legacy GL init. It will set state if successful.
+    needsRebuild_.store(false);
 }
 
 void Chunk::generateTerrain(int seed, const std::optional<glm::vec3>& pCenterOpt, const std::optional<float>& pRadiusOpt) {
@@ -390,9 +422,14 @@ void Chunk::generateTerrain(int seed, const std::optional<glm::vec3>& pCenterOpt
     std::cout << "Generating spherical terrain for chunk. Planet R: " << planetRadius << " Center: (" << planetCenter.x << "," << planetCenter.y << "," << planetCenter.z << ")" << std::endl;
     
     // Noise parameters for variety
-    float materialNoiseScale = 0.05f; // Controls the size of material patches
     float elevationNoiseScale = 0.02f; // Controls variation in "surface" height
-    float oreNoiseScale = 0.1f; // For ore patches
+    float oreNoiseScale = 0.1f; // For ore generation
+    
+    // Additional noise layers for diverse terrain features
+    float temperatureNoiseScale = 0.03f; // Large-scale temperature variation
+    float moistureNoiseScale = 0.04f; // Large-scale moisture variation
+    float elevationMajorScale = 0.01f; // Large-scale elevation (mountains/valleys)
+    float featureNoiseScale = 0.08f; // Small-scale features (lakes, forests)
 
     for (int x_local = 0; x_local < CHUNK_SIZE_X; ++x_local) {
         for (int y_local = 0; y_local < CHUNK_SIZE_Y; ++y_local) {
@@ -408,17 +445,64 @@ void Chunk::generateTerrain(int seed, const std::optional<glm::vec3>& pCenterOpt
                 float effectivePlanetRadius = planetRadius + elevationNoise * 2.0f; // +/- 2 blocks height variation
 
                 if (distToPlanetCenter <= effectivePlanetRadius) {
-                    // Material noise for biome-like variations
-                    float materialNoiseVal = glm::simplex(glm::vec3(blockWorldPos * materialNoiseScale + glm::vec3(seed * 0.3f)));
+                    // Multi-layer noise for sophisticated biome generation
+                    float temperatureNoise = glm::simplex(glm::vec2(blockWorldPos.x * temperatureNoiseScale, blockWorldPos.z * temperatureNoiseScale) + glm::vec2(seed * 0.2f));
+                    float moistureNoise = glm::simplex(glm::vec2(blockWorldPos.x * moistureNoiseScale, blockWorldPos.z * moistureNoiseScale) + glm::vec2(seed * 0.4f));
+                    float elevationMajorNoise = glm::simplex(glm::vec2(blockWorldPos.x * elevationMajorScale, blockWorldPos.z * elevationMajorScale) + glm::vec2(seed * 0.6f));
+                    float featureNoise = glm::simplex(glm::vec3(blockWorldPos * featureNoiseScale + glm::vec3(seed * 0.3f)));
                     
-                    // Determine biome based on noise and position
-                    BiomeContext biome;
-                    if (materialNoiseVal < -0.3f) {
-                        biome = BiomeContext("cold", -0.7f, 0.3f); // Cold biome
-                    } else if (materialNoiseVal > 0.3f) {
-                        biome = BiomeContext("hot", 0.8f, -0.3f);  // Hot biome
+                    // Adjust effective radius based on major elevation features (mountains/valleys)
+                    effectivePlanetRadius += elevationMajorNoise * 15.0f; // +/- 15 blocks for major terrain features
+                    
+                    // Recalculate if block is still within the adjusted surface
+                    if (distToPlanetCenter > effectivePlanetRadius) {
+                        blockTypeId = 0; // Air
                     } else {
-                        biome = BiomeContext("temperate", 0.2f, 0.5f); // Temperate biome
+                        // Determine biome based on multiple noise layers
+                    BiomeContext biome;
+                        
+                        // Combine temperature and moisture for biome selection
+                        float temperature = temperatureNoise * 0.7f + elevationMajorNoise * -0.3f; // Higher elevation = colder
+                        float moisture = moistureNoise * 0.8f + featureNoise * 0.2f;
+                        
+                        // Determine primary biome
+                        if (temperature < -0.6f) {
+                            if (moisture < -0.3f) {
+                                biome = BiomeContext("arctic", -0.9f, 0.1f); // Arctic
+                    } else {
+                                biome = BiomeContext("tundra", -0.6f, 0.4f); // Tundra
+                            }
+                        } else if (temperature < -0.2f) {
+                            if (moisture < 0.0f) {
+                                biome = BiomeContext("cold", -0.7f, 0.3f); // Cold
+                            } else {
+                                biome = BiomeContext("forest", 0.3f, 0.7f); // Cold forest
+                            }
+                        } else if (temperature < 0.3f) {
+                            if (moisture < -0.4f) {
+                                biome = BiomeContext("temperate", 0.2f, 0.5f); // Temperate plains
+                            } else if (moisture > 0.6f) {
+                                biome = BiomeContext("swamp", 0.4f, 0.9f); // Swamp
+                            } else {
+                                biome = BiomeContext("forest", 0.3f, 0.7f); // Temperate forest
+                            }
+                        } else if (temperature < 0.7f) {
+                            if (moisture < -0.5f) {
+                                biome = BiomeContext("desert", 0.9f, -0.8f); // Desert
+                            } else {
+                                biome = BiomeContext("tropical", 0.7f, 0.8f); // Tropical
+                            }
+                        } else {
+                            if (moisture < -0.3f) {
+                                biome = BiomeContext("volcanic", 1.0f, -0.5f); // Volcanic
+                            } else {
+                                biome = BiomeContext("hot", 0.8f, -0.3f); // Hot
+                            }
+                        }
+                        
+                        // Special mountain biome for high elevation areas
+                        if (elevationMajorNoise > 0.4f) {
+                            biome = BiomeContext("mountain", -0.3f, 0.2f);
                     }
                     
                     // Default planet context
@@ -430,26 +514,84 @@ void Chunk::generateTerrain(int seed, const std::optional<glm::vec3>& pCenterOpt
                     if (depth < 1.5f) { // Top layer - use biome-aware selection
                         blockTypeId = registry.selectBlock("azurevoxel:grass", biome, planet);
                         
-                        // If cold biome selected snow, keep it, otherwise try alternatives
-                        if (blockTypeId == registry.getBlockId("azurevoxel:grass") && materialNoiseVal < -0.3f) {
-                            blockTypeId = registry.getBlockId("azurevoxel:snow");
-                        } else if (materialNoiseVal > 0.5f) {
+                            // Biome-specific surface materials
+                            if (biome.biome_id == "arctic") {
+                                blockTypeId = registry.getBlockId("azurevoxel:ice");
+                            } else if (biome.biome_id == "desert") {
                             blockTypeId = registry.getBlockId("azurevoxel:sand");
-                        }
+                            } else if (biome.biome_id == "volcanic") {
+                                if (featureNoise > 0.3f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:lava");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:obsidian");
+                                }
+                            } else if (biome.biome_id == "swamp") {
+                                if (featureNoise > 0.2f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:mud");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:grass");
+                                }
+                            } else if (biome.biome_id == "mountain") {
+                                blockTypeId = registry.getBlockId("azurevoxel:granite");
+                            } else if (biome.biome_id == "forest") {
+                                // Add some variety in forest floors
+                                if (featureNoise > 0.4f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:moss_stone");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:grass");
+                                }
+                            } else if (biome.biome_id == "tropical") {
+                                blockTypeId = registry.getBlockId("azurevoxel:moss_stone");
+                            } else if (biome.biome_id == "tundra") {
+                                blockTypeId = registry.getBlockId("azurevoxel:snow");
+                            } else if (biome.biome_id == "cold") {
+                                blockTypeId = registry.getBlockId("azurevoxel:snow");
+                            } else {
+                                // Default temperate
+                                blockTypeId = registry.getBlockId("azurevoxel:grass");
+                            }
+                            
+                            // Add desert cacti
+                            if (biome.biome_id == "desert" && featureNoise > 0.7f && depth < 0.5f) {
+                                blockTypeId = registry.getBlockId("azurevoxel:cactus");
+                            }
+                            
                     } else if (depth < 5.0f) { // Sub-surface layer
-                        if (materialNoiseVal < -0.3f) {
-                            blockTypeId = registry.getBlockId("azurevoxel:gravel"); // Under cold areas
+                            if (biome.biome_id == "arctic" || biome.biome_id == "tundra") {
+                                blockTypeId = registry.getBlockId("azurevoxel:gravel");
+                            } else if (biome.biome_id == "desert") {
+                                blockTypeId = registry.getBlockId("azurevoxel:sandstone");
+                            } else if (biome.biome_id == "volcanic") {
+                                blockTypeId = registry.getBlockId("azurevoxel:basalt");
+                            } else if (biome.biome_id == "swamp") {
+                                blockTypeId = registry.getBlockId("azurevoxel:clay");
+                            } else if (biome.biome_id == "mountain") {
+                                if (featureNoise > 0.3f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:granite");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:stone");
+                                }
                         } else {
                             blockTypeId = registry.getBlockId("azurevoxel:dirt");
                         }
                     } else {
-                        // Deeper areas - mostly stone
+                            // Deeper areas - mostly stone with biome variations
+                            if (biome.biome_id == "volcanic") {
+                                if (featureNoise > 0.5f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:basalt");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:obsidian");
+                                }
+                            } else if (biome.biome_id == "mountain") {
+                                blockTypeId = registry.getBlockId("azurevoxel:granite");
+                            } else {
                         blockTypeId = registry.getBlockId("azurevoxel:stone");
+                            }
                         
-                        // Occasionally, place ores deeper down
+                            // Ore generation with biome influence
                         if (depth > 8.0f) {
                             float oreNoiseVal = glm::simplex(blockWorldPos * oreNoiseScale + glm::vec3(seed * 0.7f));
-                            if (oreNoiseVal > 0.75f) { // Adjust threshold for rarity
+                                if (oreNoiseVal > 0.75f) {
                                 blockTypeId = registry.getBlockId("azurevoxel:gold_ore");
                             }
                         }
@@ -458,9 +600,23 @@ void Chunk::generateTerrain(int seed, const std::optional<glm::vec3>& pCenterOpt
                     // Simple water level - place water in areas where terrain is "carved out" below water level
                     float waterLevelRadius = planetRadius * 0.7f; // Water level at 70% of planet radius
                     
-                    // If this block is within the water level, override with water
-                    if (distToPlanetCenter <= waterLevelRadius) {
+                        // Create lakes in low-lying areas with biome influence
+                        float lakeNoise = glm::simplex(glm::vec2(blockWorldPos.x * 0.01f, blockWorldPos.z * 0.01f) + glm::vec2(seed * 1.1f));
+                        bool isLakeArea = (lakeNoise < -0.4f && elevationMajorNoise < -0.2f);
+                        
+                        // Biome-specific water features
+                        if (biome.biome_id == "swamp") {
+                            // Swamps have more water
+                            if (featureNoise > 0.1f && depth < 2.0f) {
                         blockTypeId = registry.getBlockId("azurevoxel:water");
+                            }
+                        } else if (isLakeArea && depth < 3.0f) {
+                            // Natural lakes in low areas
+                            blockTypeId = registry.getBlockId("azurevoxel:water");
+                        } else if (distToPlanetCenter <= waterLevelRadius) {
+                            // Core water level
+                            blockTypeId = registry.getBlockId("azurevoxel:water");
+                        }
                     }
                 }
 
@@ -477,6 +633,9 @@ void Chunk::generateTerrain(int seed, const std::optional<glm::vec3>& pCenterOpt
 
 // This is the single, complete definition of buildSurfaceMesh
 void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::vec3>& pCenterOpt, const std::optional<float>& pRadiusOpt) {
+    std::lock_guard<std::mutex> meshLock(meshMutex_);
+    std::lock_guard<std::mutex> dataLock(dataMutex_);
+    
     cleanupMesh(); 
     meshVertices.clear();
     meshIndices.clear();
@@ -502,7 +661,8 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
         for (int x_local = 0; x_local < CHUNK_SIZE_X; ++x_local) {
             for (int y_local = 0; y_local < CHUNK_SIZE_Y; ++y_local) {
                 for (int z_local = 0; z_local < CHUNK_SIZE_Z; ++z_local) {
-                    if (!hasBlockAtLocal(x_local, y_local, z_local)) continue;
+                    // Thread-safe block check using data directly
+                    if (blockDataForInitialization_[x_local][y_local][z_local].type == 0) continue;
 
                     for (int face = 0; face < 6; ++face) {
                         int nx = x_local + neighborOffsets[face][0];
@@ -511,25 +671,20 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
                         bool shouldRenderFace = false;
 
                         uint16_t currentBlockType = static_cast<uint16_t>(blockDataForInitialization_[x_local][y_local][z_local].type);
-                        if (currentBlockType == 0) continue; // Should not happen if hasBlockAtLocal was true, but defensive
+                        if (currentBlockType == 0) continue; // Should not happen if check above was true, but defensive
 
                         if (nx < 0 || nx >= CHUNK_SIZE_X || ny < 0 || ny >= CHUNK_SIZE_Y || nz < 0 || nz >= CHUNK_SIZE_Z) {
                             shouldRenderFace = true; 
                         } else {
                             uint16_t neighborBlockType = static_cast<uint16_t>(blockDataForInitialization_[nx][ny][nz].type);
-                            // Use optimized registry face culling
                             shouldRenderFace = registry.shouldRenderFace(currentBlockType, neighborBlockType);
                         }
 
                         if (shouldRenderFace) {
-                            // Get render data from registry for texture mapping
                             const BlockRenderData& renderData = registry.getRenderData(currentBlockType);
                             uint16_t textureIndex = renderData.texture_atlas_index;
-                            
-                            // Calculate UV coordinates based on texture index
-                            // For now, use a simple grid layout (10x10 textures)
                             int texturesPerRow = 10;
-                            float textureSize = 80.0f; // Size of each texture in pixels
+                            float textureSize = 80.0f; 
                             int texX = textureIndex % texturesPerRow;
                             int texY = textureIndex / texturesPerRow;
                             float uvPixelOffsetX = texX * textureSize;
@@ -543,7 +698,7 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
                                     meshVertices.push_back((uvPixelOffsetX + texCoords[i].x * textureSize) / Block::spritesheetTexture.getWidth());
                                     meshVertices.push_back((uvPixelOffsetY + texCoords[i].y * textureSize) / Block::spritesheetTexture.getHeight());
                                 } else {
-                                    meshVertices.push_back(texCoords[i].x); // Fallback UVs
+                                    meshVertices.push_back(texCoords[i].x); 
                                     meshVertices.push_back(texCoords[i].y);
                                 }
                             }
@@ -556,7 +711,6 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
             }
         }
     } else {
-        // Spherical mesh generation logic
         const glm::vec3& planetCenter = pCenterOpt.value();
         const float planetRadius = pRadiusOpt.value();
         std::cout << "Building spherical mesh for chunk. Planet R: " << planetRadius << " Chunk Pos: (" << position.x << "," << position.y << "," << position.z << ")" << std::endl;
@@ -564,39 +718,33 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
         for (int x_loc = 0; x_loc < CHUNK_SIZE_X; ++x_loc) {
             for (int y_loc = 0; y_loc < CHUNK_SIZE_Y; ++y_loc) {
                 for (int z_loc = 0; z_loc < CHUNK_SIZE_Z; ++z_loc) {
-                    if (!hasBlockAtLocal(x_loc, y_loc, z_loc)) continue;
+                    if (blockDataForInitialization_[x_loc][y_loc][z_loc].type == 0) continue;
 
                     for (int face = 0; face < 6; ++face) {
-                        // Check neighbor block for culling
                         int nx_loc = x_loc + neighborOffsets[face][0];
                         int ny_loc = y_loc + neighborOffsets[face][1];
                         int nz_loc = z_loc + neighborOffsets[face][2];
-
                         bool shouldRenderFace = false;
                         uint16_t currentBlockType = static_cast<uint16_t>(blockDataForInitialization_[x_loc][y_loc][z_loc].type);
-                        if (currentBlockType == 0) continue; // Should not happen if hasBlockAtLocal was true
+                        if (currentBlockType == 0) continue; 
 
                         if (nx_loc < 0 || nx_loc >= CHUNK_SIZE_X || ny_loc < 0 || ny_loc >= CHUNK_SIZE_Y || nz_loc < 0 || nz_loc >= CHUNK_SIZE_Z) {
                             glm::vec3 neighborBlockWorldCenter = position + glm::vec3(nx_loc + 0.5f, ny_loc + 0.5f, nz_loc + 0.5f);
                             if (glm::length(neighborBlockWorldCenter - planetCenter) > planetRadius) {
-                                shouldRenderFace = true; // Neighbor is outside planet, effectively air
+                                shouldRenderFace = true; 
                             } else {
-                                shouldRenderFace = true; // Placeholder: always render inter-chunk faces for now if current is solid
+                                shouldRenderFace = true; 
                             }
                         } else {
                             uint16_t neighborBlockType = static_cast<uint16_t>(blockDataForInitialization_[nx_loc][ny_loc][nz_loc].type);
-                            // Use optimized registry face culling
                             shouldRenderFace = registry.shouldRenderFace(currentBlockType, neighborBlockType);
                         }
 
                         if (shouldRenderFace) {
-                            // Get render data from registry for texture mapping
                             const BlockRenderData& renderData = registry.getRenderData(currentBlockType);
                             uint16_t textureIndex = renderData.texture_atlas_index;
-                            
-                            // Calculate UV coordinates based on texture index
                             int texturesPerRow = 10;
-                            float textureSize = 80.0f; // Size of each texture in pixels
+                            float textureSize = 80.0f; 
                             int texX = textureIndex % texturesPerRow;
                             int texY = textureIndex / texturesPerRow;
                             float uvPixelOffsetX = texX * textureSize;
@@ -606,11 +754,9 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
                                 glm::vec3 localFaceVertexPos = glm::vec3(x_loc + faceVertices[face][i][0],
                                                                    y_loc + faceVertices[face][i][1],
                                                                    z_loc + faceVertices[face][i][2]);
-                                glm::vec3 vboVertexPos = localFaceVertexPos; // Vertices are already local to chunk origin
-
-                                meshVertices.push_back(vboVertexPos.x);
-                                meshVertices.push_back(vboVertexPos.y);
-                                meshVertices.push_back(vboVertexPos.z);
+                                meshVertices.push_back(localFaceVertexPos.x);
+                                meshVertices.push_back(localFaceVertexPos.y);
+                                meshVertices.push_back(localFaceVertexPos.z);
 
                                 if (Block::spritesheetLoaded && Block::spritesheetTexture.getWidth() > 0) {
                                     meshVertices.push_back((uvPixelOffsetX + texCoords[i].x * textureSize) / Block::spritesheetTexture.getWidth());
@@ -633,37 +779,63 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
     if (meshVertices.empty()) {
         surfaceMesh.indexCount = 0;
         surfaceMesh.VAO = 0;
-        needsRebuild = false; 
+        needsRebuild_.store(false); 
         return;
     }
+    surfaceMesh.indexCount = static_cast<GLsizei>(meshIndices.size());
+    needsRebuild_.store(false);
+    std::cout << "🔧 Chunk surface mesh data prepared. Vertices: " << meshVertices.size()/5 << ", Indices: " << meshIndices.size() << std::endl;
+}
 
-    if (Block::shaderProgram == 0) {
-        std::cout << "BuildSurfaceMesh: Initializing block shader..." << std::endl;
-        Block::InitBlockShader();
-        if (Block::shaderProgram == 0) {
-            std::cerr << "CRITICAL ERROR: Failed to init block shader in BuildSurfaceMesh." << std::endl;
+// Legacy OpenGL Initialize - This was called by ensureInitialized.
+// The new system uses initializeOpenGL called from main thread task queue.
+void Chunk::openglInitialize(World* world) {
+    // This method is intended for the legacy ensureInitialized path.
+    // It attempts to create OpenGL objects if they don't exist and the mesh data is ready.
+    // It's distinct from the new `initializeOpenGL` which is part of the ChunkState pipeline.
+
+    if (isInitialized() && surfaceMesh.VAO != 0) { // Check if already fully initialized by new pipeline or this legacy one
+        std::cout << "INFO: Legacy openglInitialize: Chunk already fully initialized. VAO=" << surfaceMesh.VAO << std::endl;
             return;
         }
+
+    if (glfwGetCurrentContext() == nullptr) {
+        std::cerr << "CRITICAL ERROR (Legacy openglInitialize): No OpenGL context! Cannot create GL objects for chunk at "
+                  << position.x << "," << position.z << std::endl;
+        return; // Cannot proceed
     }
-    while (glGetError() != GL_NO_ERROR) {} 
+    
+    std::cout << "INFO: Legacy openglInitialize: Attempting to create GL objects for chunk at " << position.x << "," << position.z << std::endl;
+
+    // Ensure shader and spritesheet are loaded (idempotent checks)
+    if (Block::shaderProgram == 0) Block::InitBlockShader();
+    if (!Block::spritesheetLoaded) Block::InitSpritesheet("res/textures/Spritesheet.PNG");
+
+    if (Block::shaderProgram == 0 || !Block::spritesheetLoaded) {
+        std::cerr << "CRITICAL ERROR (Legacy openglInitialize): Shader or spritesheet failed to load." << std::endl;
+        return;
+    }
+    
+    // This legacy path assumes buildSurfaceMesh was called just before it by ensureInitialized,
+    // so meshVertices and meshIndices should be populated.
+    std::lock_guard<std::mutex> meshLock(meshMutex_); // Protect meshVertices and meshIndices
+    if (!meshVertices.empty() && !meshIndices.empty() && surfaceMesh.VAO == 0) {
+        std::cout << "LEGACY_GL_INIT: Creating OpenGL objects for chunk mesh" << std::endl;
+        while (glGetError() != GL_NO_ERROR) {} // Clear previous errors
 
     glGenVertexArrays(1, &surfaceMesh.VAO);
     GLenum error = glGetError();
     if (error != GL_NO_ERROR || surfaceMesh.VAO == 0) {
-        std::cerr << "CRITICAL ERROR: Failed to generate VAO for chunk. OpenGL error: " << error << " VAO ID: " << surfaceMesh.VAO << std::endl;
-        surfaceMesh.VAO = 0; 
-        return;
+            std::cerr << "CRITICAL ERROR (Legacy): Failed to generate VAO. OpenGL error: " << error << std::endl;
+            surfaceMesh.VAO = 0; return;
     }
     glBindVertexArray(surfaceMesh.VAO);
 
     glGenBuffers(1, &surfaceMesh.VBO);
     error = glGetError();
     if (error != GL_NO_ERROR || surfaceMesh.VBO == 0) {
-        std::cerr << "CRITICAL ERROR: Failed to generate VBO for chunk. OpenGL error: " << error << " VBO ID: " << surfaceMesh.VBO << std::endl;
-        glDeleteVertexArrays(1, &surfaceMesh.VAO);
-        surfaceMesh.VAO = 0;
-        surfaceMesh.VBO = 0;
-        return;
+            std::cerr << "CRITICAL ERROR (Legacy): Failed to generate VBO. OpenGL error: " << error << std::endl;
+            glDeleteVertexArrays(1, &surfaceMesh.VAO); surfaceMesh.VAO = 0; return;
     }
     glBindBuffer(GL_ARRAY_BUFFER, surfaceMesh.VBO);
     glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_STATIC_DRAW);
@@ -671,120 +843,491 @@ void Chunk::buildSurfaceMesh(const World* /*world*/, const std::optional<glm::ve
     glGenBuffers(1, &surfaceMesh.EBO);
     error = glGetError();
     if (error != GL_NO_ERROR || surfaceMesh.EBO == 0) {
-        std::cerr << "CRITICAL ERROR: Failed to generate EBO for chunk. OpenGL error: " << error << " EBO ID: " << surfaceMesh.EBO << std::endl;
-        glDeleteBuffers(1, &surfaceMesh.VBO);
-        glDeleteVertexArrays(1, &surfaceMesh.VAO);
-        surfaceMesh.VAO = 0; 
-        surfaceMesh.VBO = 0;
-        surfaceMesh.EBO = 0;
-        return;
+            std::cerr << "CRITICAL ERROR (Legacy): Failed to generate EBO. OpenGL error: " << error << std::endl;
+            glDeleteBuffers(1, &surfaceMesh.VBO); glDeleteVertexArrays(1, &surfaceMesh.VAO);
+            surfaceMesh.VAO = 0; surfaceMesh.VBO = 0; return;
     }
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, surfaceMesh.EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshIndices.size() * sizeof(unsigned int), meshIndices.data(), GL_STATIC_DRAW);
 
-    // Position attribute
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-
-    // Texture coordinate attribute
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-
-    surfaceMesh.indexCount = static_cast<GLsizei>(meshIndices.size());
-    needsRebuild = false;
-    std::cout << "Chunk surface mesh built successfully. Vertices: " << meshVertices.size()/5 << ", Indices: " << meshIndices.size() << std::endl;
-}
-
-void Chunk::openglInitialize(World* world) {
-    if (isInitialized_ && surfaceMesh.VAO != 0) return; // Already GL initialized
-
-    if (glfwGetCurrentContext() == nullptr) {
-        std::cerr << "CRITICAL ERROR: No OpenGL context current on main thread for openglInitialize! Chunk: " 
-                  << position.x << "," << position.z << std::endl;
-        return;
+        std::cout << "LEGACY_GL_INIT: OpenGL objects created. VAO=" << surfaceMesh.VAO << std::endl;
+        surfaceMesh.indexCount = static_cast<GLsizei>(meshIndices.size()); // Ensure indexCount is set
+    } else if (surfaceMesh.VAO != 0) {
+         std::cout << "INFO: Legacy openglInitialize: VAO already exists (" << surfaceMesh.VAO << ")." << std::endl;
+    } else {
+        std::cout << "WARN: Legacy openglInitialize: Mesh data empty or VAO already 0, cannot create GL objects." << std::endl;
+        // If mesh data is empty, but we reached here, it means buildMeshAsync might have found no visible faces.
+        // In this case, the chunk is effectively 'initialized' but has nothing to draw.
+        surfaceMesh.VAO = 0; // Ensure it's 0
+        surfaceMesh.indexCount = 0;
     }
 
-    std::cout << "MainThread: OpenGL-Initializing chunk at " << position.x << "," << position.z << std::endl;
-    
-    if (Block::shaderProgram == 0) {
-        Block::InitBlockShader();
-        if (Block::shaderProgram == 0) {
-            std::cerr << "CRITICAL ERROR: Failed to initialize block shader program! Cannot initialize chunk." << std::endl;
-            return;
-        }
+    // If VAO is now valid, we can consider this chunk fully initialized *for the legacy path*.
+    if (surfaceMesh.VAO != 0) {
+        state_.store(ChunkState::FULLY_INITIALIZED); // MODIFIED: From isInitialized_ = true;
+        needsRebuild_.store(false); 
+        std::cout << "INFO: Legacy openglInitialize: Chunk at " << position.x << "," << position.z << " marked FULLY_INITIALIZED. VAO=" << surfaceMesh.VAO << std::endl;
+    } else {
+        std::cout << "WARN: Legacy openglInitialize: Chunk at " << position.x << "," << position.z << " failed GL setup, not fully initialized." << std::endl;
     }
-    if (!Block::spritesheetLoaded) { 
-        Block::InitSpritesheet("res/textures/Spritesheet.PNG"); // Path from executable location
-        if (!Block::spritesheetLoaded) {
-            std::cerr << "CRITICAL ERROR: Failed to load global spritesheet in openglInitialize! Chunk texturing might fail." << std::endl;
-        }
-    }
-
-    for (int x = 0; x < CHUNK_SIZE_X; ++x) {
-        for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
-            for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
-                BlockInfo info = blockDataForInitialization_[x][y][z];
-                glm::vec3 blockWorldPos = this->position + glm::vec3(x, y, z);
-                
-                if (info.type != 0 && blocks_[x][y][z] == nullptr) { 
-                    if (info.type == 1) { 
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f, 0.5f, 0.5f), 1.0f); 
-                    } else if (info.type == 2) { 
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.2f, 0.8f, 0.2f), 1.0f);
-                    } else if (info.type == 3) { 
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.6f, 0.4f, 0.2f), 1.0f);
-                    } else if (info.type == 4) { // Sand
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.9f, 0.9f, 0.6f), 1.0f); // Sandy color
-                    } else if (info.type == 5) { // Water
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.2f, 0.4f, 0.8f), 1.0f); // Watery color
-                    } else if (info.type == 6) { // Snow
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.95f, 0.95f, 1.0f), 1.0f); // Snowy color
-                    } else if (info.type == 7) { // Wood Log
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.4f, 0.3f, 0.2f), 1.0f); // Woody color
-                    } else if (info.type == 8) { // Leaves
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.1f, 0.5f, 0.1f), 1.0f); // Leafy color
-                    } else if (info.type == 9) { // Gravel
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.6f, 0.6f, 0.6f), 1.0f); // Gravel color
-                    } else if (info.type == 10) { // Gold Ore
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.8f, 0.7f, 0.2f), 1.0f); // Goldish color
-                    } else { // Default for any other new types, or if type is unknown but not 0
-                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, glm::vec3(0.5f), 1.0f); // Default grey
-                    }
-                } else if (info.type == 0 && blocks_[x][y][z] != nullptr) { 
-                    blocks_[x][y][z] = nullptr;
-                }
-            }
-        }
-    }
-
-    if (needsRebuild || surfaceMesh.VAO == 0) { 
-        std::cout << "MainThread: Building surface mesh for chunk " << position.x << "," << position.z << " during openglInitialize" << std::endl;
-        if (planetCenter_.has_value() && planetRadius_.has_value()) {
-            buildSurfaceMesh(world, planetCenter_, planetRadius_); // world can be null here, but spherical meshing might not use it extensively
-        } else {
-            // For flat chunks, world context is more critical for neighbor checks.
-            // If world is null, buildSurfaceMesh for flat chunks might operate with limitations (e.g., render all boundary faces).
-            buildSurfaceMesh(world, std::nullopt, std::nullopt); 
-        }
-    }
-    
-    if (world) { // Check if world is not null before calling save
-       // saveToFile(world->getWorldDataPath()); // Save is currently commented out, but guard it anyway for the future
-    }
-
-    isInitialized_ = true;
-    needsRebuild = false; 
-    std::cout << "Chunk at " << position.x << "," << position.z << " OpenGL-initialized. VAO=" << surfaceMesh.VAO << std::endl;
 }
 
 void Chunk::setPlanetContext(const glm::vec3& planetCenter, float planetRadius) {
     planetCenter_ = planetCenter;
     planetRadius_ = planetRadius;
-    isInitialized_ = false; // Re-initialization will be needed
-    needsRebuild = true; 
+    state_.store(ChunkState::UNINITIALIZED); // MODIFIED: From isInitialized_ = false;
+    needsRebuild_.store(true); 
+}
+
+// New multi-threaded data generation phase
+void Chunk::generateDataAsync(const World* world, int seed, const std::optional<glm::vec3>& planetCenter, const std::optional<float>& planetRadius) {
+    ChunkState expected = ChunkState::UNINITIALIZED;
+    if (!state_.compare_exchange_strong(expected, ChunkState::DATA_GENERATING)) {
+        return; 
+    }
+    
+    std::lock_guard<std::mutex> lock(dataMutex_);
+    planetCenter_ = planetCenter;
+    planetRadius_ = planetRadius;
+    
+    if (blockDataForInitialization_.empty() || blockDataForInitialization_.size() != CHUNK_SIZE_X) { 
+        blockDataForInitialization_.resize(CHUNK_SIZE_X,
+                                 std::vector<std::vector<BlockInfo>>(
+                                     CHUNK_SIZE_Y,
+                                     std::vector<BlockInfo>(CHUNK_SIZE_Z)));
+    }
+    
+    bool loadedFromFile = false;
+    if (world) {
+        std::string worldDataPath = "chunk_data/" + world->getWorldName();
+        loadedFromFile = loadFromFile_DataOnly(worldDataPath, const_cast<World*>(world));
+        if (loadedFromFile) {
+            std::cout << "✓ LOADED chunk " << position.x << "," << position.y << "," << position.z << " from saved file (FAST)" << std::endl;
+        } else {
+            std::cout << "✗ No saved file found for chunk " << position.x << "," << position.y << "," << position.z << " - will generate" << std::endl;
+        }
+    }
+
+    if (!loadedFromFile) {
+        std::cout << "⚡ GENERATING chunk " << position.x << "," << position.y << "," << position.z << " (SLOW)" << std::endl;
+        generateTerrainDataOnly(seed, planetCenter, planetRadius);
+        if (world) {
+            std::string worldDataPath = "chunk_data/" + world->getWorldName();
+            if (saveToFile(worldDataPath)) {
+                std::cout << "💾 Saved generated chunk " << position.x << "," << position.y << "," << position.z << " to file for future use" << std::endl;
+            } else {
+                std::cerr << "❌ Failed to save chunk " << position.x << "," << position.y << "," << position.z << " to file." << std::endl;
+            }
+        }
+    }
+    state_.store(ChunkState::DATA_READY);
+}
+
+// New multi-threaded mesh building phase
+void Chunk::buildMeshAsync(const World* world) {
+    ChunkState expected = ChunkState::DATA_READY;
+    if (!state_.compare_exchange_strong(expected, ChunkState::MESH_BUILDING)) {
+        return; 
+    }
+    std::cout << "🔧 BUILDING mesh for chunk " << position.x << "," << position.y << "," << position.z << std::endl;
+    buildSurfaceMesh(world, planetCenter_, planetRadius_);
+    state_.store(ChunkState::MESH_READY);
+}
+
+// OpenGL initialization (main thread only - THIS IS THE NEW SYSTEM'S METHOD)
+void Chunk::initializeOpenGL(World* world) {
+    ChunkState expected = ChunkState::MESH_READY;
+    if (!state_.compare_exchange_strong(expected, ChunkState::OPENGL_INITIALIZING)) {
+        // If already initializing or initialized, or not ready for mesh, then return.
+        if (state_.load() == ChunkState::OPENGL_INITIALIZING || state_.load() == ChunkState::FULLY_INITIALIZED) {
+            // std::cout << "DEBUG: initializeOpenGL: Already initializing or initialized for chunk " << position.x << "," << position.z << std::endl;
+        } else {
+            // std::cout << "DEBUG: initializeOpenGL: Not in MESH_READY state for chunk " << position.x << "," << position.z << ". Current state: " << static_cast<int>(state_.load()) << std::endl;
+        }
+        return; 
+    }
+
+    if (glfwGetCurrentContext() == nullptr) {
+        std::cerr << "CRITICAL ERROR (initializeOpenGL): No OpenGL context current on main thread! Chunk: " 
+                  << position.x << "," << position.z << std::endl;
+        state_.store(ChunkState::MESH_READY); // Revert state
+        return;
+    }
+
+    std::cout << "🎨 OpenGL-Initializing chunk at " << position.x << "," << position.z << " (New Pipeline)" << std::endl;
+    
+    // Initialize shader and texture if needed
+    if (Block::shaderProgram == 0) {
+        Block::InitBlockShader();
+        if (Block::shaderProgram == 0) {
+            std::cerr << "CRITICAL ERROR (initializeOpenGL): Failed to initialize block shader program!" << std::endl;
+            state_.store(ChunkState::MESH_READY); // Revert state
+            return;
+        }
+    }
+    if (!Block::spritesheetLoaded) { 
+        Block::InitSpritesheet("res/textures/Spritesheet.PNG");
+        if (!Block::spritesheetLoaded) {
+            std::cerr << "CRITICAL ERROR (initializeOpenGL): Failed to load global spritesheet!" << std::endl;
+            // Continue, but textures might be wrong
+        }
+    }
+
+    // Create Block objects from data
+    {
+        std::lock_guard<std::mutex> dataLock(dataMutex_); // Protects blockDataForInitialization_
+        std::lock_guard<std::mutex> blocksLock(meshMutex_); // Assuming blocks_ might also need protection if accessed elsewhere, better safe. For now, meshMutex_ also covers blocks_ creation.
+    for (int x = 0; x < CHUNK_SIZE_X; ++x) {
+        for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
+            for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
+                BlockInfo info = blockDataForInitialization_[x][y][z];
+                glm::vec3 blockWorldPos = this->position + glm::vec3(x, y, z);
+                if (info.type != 0 && blocks_[x][y][z] == nullptr) { 
+                        blocks_[x][y][z] = std::make_shared<Block>(blockWorldPos, static_cast<uint16_t>(info.type), glm::vec3(0.5f), 1.0f);
+                } else if (info.type == 0 && blocks_[x][y][z] != nullptr) { 
+                    blocks_[x][y][z] = nullptr;
+                    }
+                }
+            }
+        }
+    }
+
+    // Create OpenGL objects from the prepared mesh data
+    {
+        std::lock_guard<std::mutex> meshLock(meshMutex_); // Protects meshVertices, meshIndices, and surfaceMesh
+        if (!meshVertices.empty() && !meshIndices.empty()) {
+            std::cout << "🎨 Creating OpenGL objects for chunk mesh (New Pipeline)" << std::endl;
+            while (glGetError() != GL_NO_ERROR) {} // Clear previous errors
+            
+            glGenVertexArrays(1, &surfaceMesh.VAO);
+            GLenum error = glGetError();
+            if (error != GL_NO_ERROR || surfaceMesh.VAO == 0) {
+                std::cerr << "CRITICAL ERROR (initializeOpenGL): Failed to generate VAO. OpenGL error: " << error << " VAO ID: " << surfaceMesh.VAO << std::endl;
+                surfaceMesh.VAO = 0; 
+                state_.store(ChunkState::MESH_READY); // Revert state
+                return;
+            }
+            glBindVertexArray(surfaceMesh.VAO);
+
+            glGenBuffers(1, &surfaceMesh.VBO);
+            error = glGetError();
+            if (error != GL_NO_ERROR || surfaceMesh.VBO == 0) {
+                std::cerr << "CRITICAL ERROR (initializeOpenGL): Failed to generate VBO. OpenGL error: " << error << " VBO ID: " << surfaceMesh.VBO << std::endl;
+                glDeleteVertexArrays(1, &surfaceMesh.VAO); surfaceMesh.VAO = 0;
+                surfaceMesh.VBO = 0;
+                state_.store(ChunkState::MESH_READY); // Revert state
+                return;
+            }
+            glBindBuffer(GL_ARRAY_BUFFER, surfaceMesh.VBO);
+            glBufferData(GL_ARRAY_BUFFER, meshVertices.size() * sizeof(float), meshVertices.data(), GL_STATIC_DRAW);
+
+            glGenBuffers(1, &surfaceMesh.EBO);
+            error = glGetError();
+            if (error != GL_NO_ERROR || surfaceMesh.EBO == 0) {
+                std::cerr << "CRITICAL ERROR (initializeOpenGL): Failed to generate EBO. OpenGL error: " << error << " EBO ID: " << surfaceMesh.EBO << std::endl;
+                glDeleteBuffers(1, &surfaceMesh.VBO); glDeleteVertexArrays(1, &surfaceMesh.VAO);
+                surfaceMesh.VAO = 0; surfaceMesh.VBO = 0; surfaceMesh.EBO = 0;
+                state_.store(ChunkState::MESH_READY); // Revert state
+                return;
+            }
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, surfaceMesh.EBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshIndices.size() * sizeof(unsigned int), meshIndices.data(), GL_STATIC_DRAW);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(1);
+
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindVertexArray(0);
+            surfaceMesh.indexCount = static_cast<GLsizei>(meshIndices.size()); // Make sure indexCount is set
+            std::cout << "🎨 OpenGL objects created successfully (New Pipeline). VAO=" << surfaceMesh.VAO << std::endl;
+        } else if (surfaceMesh.VAO != 0) {
+             std::cout << "DEBUG: initializeOpenGL: VAO already exists and mesh data is empty. This might be okay if already initialized." << std::endl;
+        } else {
+            std::cout << "WARN: initializeOpenGL: Mesh data (vertices/indices) is empty. Cannot create GL objects. Chunk at " << position.x << "," << position.z << std::endl;
+            // If mesh data is empty, but we reached here, it means buildMeshAsync might have found no visible faces.
+            // In this case, the chunk is effectively 'initialized' but has nothing to draw.
+            surfaceMesh.VAO = 0; // Ensure it's 0
+            surfaceMesh.indexCount = 0;
+        }
+    }
+    
+    needsRebuild_.store(false);
+    state_.store(ChunkState::FULLY_INITIALIZED);
+    std::cout << "✅ Chunk at " << position.x << "," << position.z << " fully initialized (New Pipeline). VAO=" << surfaceMesh.VAO << std::endl;
+}
+
+// generateTerrainDataOnly is used by the new system (generateDataAsync)
+void Chunk::generateTerrainDataOnly(int seed, const std::optional<glm::vec3>& pCenterOpt, const std::optional<float>& pRadiusOpt) {
+    std::cout << "Chunk at " << position.x << "," << position.y << "," << position.z << " generateTerrainDataOnly. Planet context: " << (pCenterOpt.has_value() ? "Yes" : "No") << std::endl;
+
+    // Get reference to the block registry
+    BlockRegistry& registry = BlockRegistry::getInstance();
+
+    if (blockDataForInitialization_.empty() || blockDataForInitialization_.size() != CHUNK_SIZE_X ) { 
+        blockDataForInitialization_.resize(CHUNK_SIZE_X,
+                                 std::vector<std::vector<BlockInfo>>(
+                                     CHUNK_SIZE_Y,
+                                     std::vector<BlockInfo>(CHUNK_SIZE_Z)));
+    }
+
+    if (!pCenterOpt.has_value() || !pRadiusOpt.has_value()) {
+        // Fallback to original flat terrain generation logic
+        std::cout << "Generating flat terrain for chunk at (" << position.x << ", " << position.y << ", " << position.z << ")" << std::endl;
+        std::vector<int> heightMap(CHUNK_SIZE_X * CHUNK_SIZE_Z);
+        for (int x_local = 0; x_local < CHUNK_SIZE_X; x_local++) {
+            for (int z_local = 0; z_local < CHUNK_SIZE_Z; z_local++) {
+                int worldX = static_cast<int>(position.x) + x_local;
+                int worldZ = static_cast<int>(position.z) + z_local;
+                float heightNoise = glm::simplex(glm::vec2(worldX * 0.01f, worldZ * 0.01f));
+                int terrainHeight = static_cast<int>(CHUNK_SIZE_Y / 2.0f + heightNoise * (CHUNK_SIZE_Y / 4.0f));
+                terrainHeight = std::max(1, std::min(CHUNK_SIZE_Y - 1, terrainHeight));
+                heightMap[x_local * CHUNK_SIZE_Z + z_local] = terrainHeight;
+            }
+        }
+
+        for (int x_local = 0; x_local < CHUNK_SIZE_X; ++x_local) {
+            for (int z_local = 0; z_local < CHUNK_SIZE_Z; ++z_local) {
+                int terrainHeight = heightMap[x_local * CHUNK_SIZE_Z + z_local];
+                for (int y_local = 0; y_local < CHUNK_SIZE_Y; ++y_local) {
+                    uint16_t blockTypeId = 0; // Default to air
+                    
+                    if (y_local < terrainHeight - 1) {
+                        // Use registry to get stone block ID
+                        blockTypeId = registry.getBlockId("azurevoxel:stone");
+                    } else if (y_local == terrainHeight - 1) {
+                        // Use registry to get grass block ID
+                        blockTypeId = registry.getBlockId("azurevoxel:grass");
+                    }
+                    
+                    blockDataForInitialization_[x_local][y_local][z_local].type = static_cast<unsigned char>(blockTypeId);
+                }
+            }
+        }
+        return;
+    }
+
+    // Spherical generation logic with biome-aware block selection
+    const glm::vec3& planetCenter = pCenterOpt.value();
+    const float planetRadius = pRadiusOpt.value();
+    std::cout << "Generating spherical terrain for chunk. Planet R: " << planetRadius << " Center: (" << planetCenter.x << "," << planetCenter.y << "," << planetCenter.z << ")" << std::endl;
+    
+    // Noise parameters for variety
+    float elevationNoiseScale = 0.02f; // Controls variation in "surface" height
+    float oreNoiseScale = 0.1f; // For ore generation
+    
+    // Additional noise layers for diverse terrain features
+    float temperatureNoiseScale = 0.03f; // Large-scale temperature variation
+    float moistureNoiseScale = 0.04f; // Large-scale moisture variation
+    float elevationMajorScale = 0.01f; // Large-scale elevation (mountains/valleys)
+    float featureNoiseScale = 0.08f; // Small-scale features (lakes, forests)
+
+    for (int x_local = 0; x_local < CHUNK_SIZE_X; ++x_local) {
+        for (int y_local = 0; y_local < CHUNK_SIZE_Y; ++y_local) {
+            for (int z_local = 0; z_local < CHUNK_SIZE_Z; ++z_local) {
+                glm::vec3 blockLocalPos = glm::vec3(x_local + 0.5f, y_local + 0.5f, z_local + 0.5f);
+                glm::vec3 blockWorldPos = position + blockLocalPos; 
+                float distToPlanetCenter = glm::length(blockWorldPos - planetCenter);
+
+                uint16_t blockTypeId = 0; // Default to air
+
+                // Determine a slightly varied "surface" radius using noise
+                float elevationNoise = glm::simplex(glm::vec2(blockWorldPos.x * elevationNoiseScale, blockWorldPos.z * elevationNoiseScale) + glm::vec2(seed * 0.1f, seed * -0.1f));
+                float effectivePlanetRadius = planetRadius + elevationNoise * 2.0f; // +/- 2 blocks height variation
+
+                if (distToPlanetCenter <= effectivePlanetRadius) {
+                    // Multi-layer noise for sophisticated biome generation
+                    float temperatureNoise = glm::simplex(glm::vec2(blockWorldPos.x * temperatureNoiseScale, blockWorldPos.z * temperatureNoiseScale) + glm::vec2(seed * 0.2f));
+                    float moistureNoise = glm::simplex(glm::vec2(blockWorldPos.x * moistureNoiseScale, blockWorldPos.z * moistureNoiseScale) + glm::vec2(seed * 0.4f));
+                    float elevationMajorNoise = glm::simplex(glm::vec2(blockWorldPos.x * elevationMajorScale, blockWorldPos.z * elevationMajorScale) + glm::vec2(seed * 0.6f));
+                    float featureNoise = glm::simplex(glm::vec3(blockWorldPos * featureNoiseScale + glm::vec3(seed * 0.3f)));
+                    
+                    // Adjust effective radius based on major elevation features (mountains/valleys)
+                    effectivePlanetRadius += elevationMajorNoise * 15.0f; // +/- 15 blocks for major terrain features
+                    
+                    // Recalculate if block is still within the adjusted surface
+                    if (distToPlanetCenter > effectivePlanetRadius) {
+                        blockTypeId = 0; // Air
+                    } else {
+                        // Determine biome based on multiple noise layers
+                    BiomeContext biome;
+                        
+                        // Combine temperature and moisture for biome selection
+                        float temperature = temperatureNoise * 0.7f + elevationMajorNoise * -0.3f; // Higher elevation = colder
+                        float moisture = moistureNoise * 0.8f + featureNoise * 0.2f;
+                        
+                        // Determine primary biome
+                        if (temperature < -0.6f) {
+                            if (moisture < -0.3f) {
+                                biome = BiomeContext("arctic", -0.9f, 0.1f); // Arctic
+                    } else {
+                                biome = BiomeContext("tundra", -0.6f, 0.4f); // Tundra
+                            }
+                        } else if (temperature < -0.2f) {
+                            if (moisture < 0.0f) {
+                                biome = BiomeContext("cold", -0.7f, 0.3f); // Cold
+                            } else {
+                                biome = BiomeContext("forest", 0.3f, 0.7f); // Cold forest
+                            }
+                        } else if (temperature < 0.3f) {
+                            if (moisture < -0.4f) {
+                                biome = BiomeContext("temperate", 0.2f, 0.5f); // Temperate plains
+                            } else if (moisture > 0.6f) {
+                                biome = BiomeContext("swamp", 0.4f, 0.9f); // Swamp
+                            } else {
+                                biome = BiomeContext("forest", 0.3f, 0.7f); // Temperate forest
+                            }
+                        } else if (temperature < 0.7f) {
+                            if (moisture < -0.5f) {
+                                biome = BiomeContext("desert", 0.9f, -0.8f); // Desert
+                            } else {
+                                biome = BiomeContext("tropical", 0.7f, 0.8f); // Tropical
+                            }
+                        } else {
+                            if (moisture < -0.3f) {
+                                biome = BiomeContext("volcanic", 1.0f, -0.5f); // Volcanic
+                            } else {
+                                biome = BiomeContext("hot", 0.8f, -0.3f); // Hot
+                            }
+                        }
+                        
+                        // Special mountain biome for high elevation areas
+                        if (elevationMajorNoise > 0.4f) {
+                            biome = BiomeContext("mountain", -0.3f, 0.2f);
+                    }
+                    
+                    // Default planet context
+                    PlanetContext planet("earth");
+
+                    // Determine surface/sub-surface materials based on depth from the *effective* surface
+                    float depth = effectivePlanetRadius - distToPlanetCenter;
+
+                    if (depth < 1.5f) { // Top layer - use biome-aware selection
+                        blockTypeId = registry.selectBlock("azurevoxel:grass", biome, planet);
+                        
+                            // Biome-specific surface materials
+                            if (biome.biome_id == "arctic") {
+                                blockTypeId = registry.getBlockId("azurevoxel:ice");
+                            } else if (biome.biome_id == "desert") {
+                            blockTypeId = registry.getBlockId("azurevoxel:sand");
+                            } else if (biome.biome_id == "volcanic") {
+                                if (featureNoise > 0.3f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:lava");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:obsidian");
+                                }
+                            } else if (biome.biome_id == "swamp") {
+                                if (featureNoise > 0.2f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:mud");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:grass");
+                                }
+                            } else if (biome.biome_id == "mountain") {
+                                blockTypeId = registry.getBlockId("azurevoxel:granite");
+                            } else if (biome.biome_id == "forest") {
+                                // Add some variety in forest floors
+                                if (featureNoise > 0.4f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:moss_stone");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:grass");
+                                }
+                            } else if (biome.biome_id == "tropical") {
+                                blockTypeId = registry.getBlockId("azurevoxel:moss_stone");
+                            } else if (biome.biome_id == "tundra") {
+                                blockTypeId = registry.getBlockId("azurevoxel:snow");
+                            } else if (biome.biome_id == "cold") {
+                                blockTypeId = registry.getBlockId("azurevoxel:snow");
+                            } else {
+                                // Default temperate
+                                blockTypeId = registry.getBlockId("azurevoxel:grass");
+                            }
+                            
+                            // Add desert cacti
+                            if (biome.biome_id == "desert" && featureNoise > 0.7f && depth < 0.5f) {
+                                blockTypeId = registry.getBlockId("azurevoxel:cactus");
+                            }
+                            
+                    } else if (depth < 5.0f) { // Sub-surface layer
+                            if (biome.biome_id == "arctic" || biome.biome_id == "tundra") {
+                                blockTypeId = registry.getBlockId("azurevoxel:gravel");
+                            } else if (biome.biome_id == "desert") {
+                                blockTypeId = registry.getBlockId("azurevoxel:sandstone");
+                            } else if (biome.biome_id == "volcanic") {
+                                blockTypeId = registry.getBlockId("azurevoxel:basalt");
+                            } else if (biome.biome_id == "swamp") {
+                                blockTypeId = registry.getBlockId("azurevoxel:clay");
+                            } else if (biome.biome_id == "mountain") {
+                                if (featureNoise > 0.3f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:granite");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:stone");
+                                }
+                        } else {
+                            blockTypeId = registry.getBlockId("azurevoxel:dirt");
+                        }
+                    } else {
+                            // Deeper areas - mostly stone with biome variations
+                            if (biome.biome_id == "volcanic") {
+                                if (featureNoise > 0.5f) {
+                                    blockTypeId = registry.getBlockId("azurevoxel:basalt");
+                                } else {
+                                    blockTypeId = registry.getBlockId("azurevoxel:obsidian");
+                                }
+                            } else if (biome.biome_id == "mountain") {
+                                blockTypeId = registry.getBlockId("azurevoxel:granite");
+                            } else {
+                        blockTypeId = registry.getBlockId("azurevoxel:stone");
+                            }
+                        
+                            // Ore generation with biome influence
+                        if (depth > 8.0f) {
+                            float oreNoiseVal = glm::simplex(blockWorldPos * oreNoiseScale + glm::vec3(seed * 0.7f));
+                                if (oreNoiseVal > 0.75f) {
+                                blockTypeId = registry.getBlockId("azurevoxel:gold_ore");
+                            }
+                        }
+                    }
+
+                    // Simple water level - place water in areas where terrain is "carved out" below water level
+                    float waterLevelRadius = planetRadius * 0.7f; // Water level at 70% of planet radius
+                    
+                        // Create lakes in low-lying areas with biome influence
+                        float lakeNoise = glm::simplex(glm::vec2(blockWorldPos.x * 0.01f, blockWorldPos.z * 0.01f) + glm::vec2(seed * 1.1f));
+                        bool isLakeArea = (lakeNoise < -0.4f && elevationMajorNoise < -0.2f);
+                        
+                        // Biome-specific water features
+                        if (biome.biome_id == "swamp") {
+                            // Swamps have more water
+                            if (featureNoise > 0.1f && depth < 2.0f) {
+                        blockTypeId = registry.getBlockId("azurevoxel:water");
+                            }
+                        } else if (isLakeArea && depth < 3.0f) {
+                            // Natural lakes in low areas
+                            blockTypeId = registry.getBlockId("azurevoxel:water");
+                        } else if (distToPlanetCenter <= waterLevelRadius) {
+                            // Core water level
+                            blockTypeId = registry.getBlockId("azurevoxel:water");
+                        }
+                    }
+                }
+
+                blockDataForInitialization_[x_local][y_local][z_local].type = static_cast<unsigned char>(blockTypeId);
+                if (blockTypeId != 0) {
+                    blocks_[x_local][y_local][z_local] = std::make_shared<Block>(position + glm::vec3(x_local,y_local,z_local), blockTypeId, glm::vec3(0.5f), 1.0f);
+                } else {
+                    blocks_[x_local][y_local][z_local] = nullptr; 
+                }
+            }
+        }
+    }
 }
 
 

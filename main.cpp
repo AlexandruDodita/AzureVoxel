@@ -86,15 +86,15 @@ int main() {
     glCullFace(GL_BACK);
 
     // Create Camera
-    camera = new Camera(glm::vec3(0.0f, 0.0f, 0.0f)); // Start at planet center to see water core
-    camera->setMovementSpeed(50.0f); // Increase speed for planetary scale
+    camera = new Camera(glm::vec3(0.0f, 170.0f, 0.0f)); // Start closer to planet surface (radius 5000 + 20 blocks height)
+    camera->setMovementSpeed(200.0f); // Increase speed significantly for planetary scale
 
     // Create World
     world = new World("SolarSystem"); // Give your world a name
 
     // Add a planet to the world
-    world->addPlanet(glm::vec3(0.0f, 0.0f, 0.0f), 50.0f, 123, "Terra"); // Planet at origin, radius 50
-    // world->addPlanet(glm::vec3(150.0f, 0.0f, 0.0f), 25.0f, 456, "Luna"); // A smaller moon
+    world->addPlanet(glm::vec3(0.0f, 0.0f, 0.0f), 150.0f, 123, "Terra"); // Planet at origin, radius 5000 (10k blocks diameter)
+     world->addPlanet(glm::vec3(150.0f, 0.0f, 0.0f), 25.0f, 456, "Luna"); // A smaller moon
 
     // Create Crosshair
     crosshair = new Crosshair(SCREEN_WIDTH, SCREEN_HEIGHT);

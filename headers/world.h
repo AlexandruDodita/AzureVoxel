@@ -15,6 +15,26 @@
 #include "block.h"
 #include "planet.h"
 #include <string>
+#include <chrono>
+
+// Enhanced thread pool for chunk operations
+class ChunkThreadPool {
+public:
+    ChunkThreadPool(size_t numThreads);
+    ~ChunkThreadPool();
+    
+    void enqueueTask(std::function<void()> task);
+    void shutdown();
+    
+private:
+    std::vector<std::thread> workers_;
+    std::queue<std::function<void()>> tasks_;
+    std::mutex queueMutex_;
+    std::condition_variable condition_;
+    std::atomic<bool> stop_;
+    
+    void workerFunction();
+};
 
 class World {
 public:
@@ -38,12 +58,18 @@ public:
     // std::shared_ptr<Chunk> getChunkAt(int chunkX, int chunkZ); // Might be deprecated or changed
     // glm::ivec2 worldToChunkCoords(const glm::vec3& worldPos) const; // Might be deprecated or changed
 
-    // Worker thread and task queue for chunk initialization (can be kept for planet chunks)
+    // Enhanced threading: Add tasks to different thread pools
     void addMainThreadTask(const std::function<void()>& task);
     void processMainThreadTasks();
-
-    // Threading: Add tasks to queues
-    void addTaskToWorker(const std::function<void()>& task);
+    
+    // Chunk generation tasks (CPU intensive)
+    void addChunkGenerationTask(const std::function<void()>& task);
+    
+    // Mesh building tasks (less CPU intensive, more frequent)
+    void addMeshBuildingTask(const std::function<void()>& task);
+    
+    // Legacy support for existing code
+    void addTaskToWorker(const std::function<void()>& task) { addChunkGenerationTask(task); }
 
 private:
     std::vector<std::shared_ptr<Planet>> planets_;
@@ -51,24 +77,19 @@ private:
     std::string worldDataPath_;
     int defaultSeed_;
 
-    // Worker thread components (can remain similar for initializing chunks within planets)
-    std::thread workerThread_;
-    std::mutex queueMutex_;
-    std::condition_variable queueCondition_;
-    std::queue<std::function<void()>> taskQueue_;
-    std::atomic<bool> shouldTerminate_;
-
+    // Enhanced multi-threading system
+    std::unique_ptr<ChunkThreadPool> chunkGenerationPool_;  // For terrain generation and file I/O
+    std::unique_ptr<ChunkThreadPool> meshBuildingPool_;     // For mesh building and preparation
+    
     // Main thread task queue (for OpenGL calls, etc.)
     std::queue<std::function<void()>> mainThreadTasks_;
     std::mutex mainThreadTasksMutex_;
-
-    void workerThreadFunction();
     
-    // void saveAllChunks() const; // This would now be saveAllPlanets or similar
+    // Performance monitoring
+    std::atomic<int> chunksGeneratedThisSecond_;
+    std::atomic<int> meshesBuiltThisSecond_;
+    std::chrono::steady_clock::time_point lastPerformanceReport_;
+    
     void createWorldDirectories();
-
-    // Remove members specific to flat chunk management, e.g.:
-    // std::unordered_map<glm::ivec2, std::shared_ptr<Chunk>, IVec2Hash> chunks;
-    // int renderDistance; 
-    // const int chunkSize; 
+    void reportPerformanceMetrics();
 }; 

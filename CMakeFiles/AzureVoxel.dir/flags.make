@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/alexd/spg/AzureVoxel -I/home/alexd/spg/AzureVoxel/external
+CXX_INCLUDES = -I/home/alexd/Desktop/Projects/AzureVoxel -I/home/alexd/Desktop/Projects/AzureVoxel/external
 
 CXX_FLAGS =  -Wall -Wextra -pedantic -pthread -std=gnu++17
 
